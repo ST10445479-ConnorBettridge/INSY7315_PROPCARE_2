@@ -65,7 +65,7 @@ class TenantLifecycleObserver {
     if (event.type !== 'request.status-changed') return;
     const { row, actor, action, requestId, stamp } = event;
 
-    if (action === 'confirm' || action === 'approve' || action === 'cancel') {
+    if (action === 'confirm' || action === 'approve' || action === 'cancel' || action === 'reject') {
       notify(row.tenant_id, '\u2705', `Request ${requestId} was ${action}ed by ${actor.name}.`, stamp);
     }
 
@@ -86,7 +86,7 @@ class ManagerActivityObserver {
 
     if (event.type === 'request.status-changed') {
       const { row, actor, action, requestId } = event;
-      if (action !== 'cancel' && action !== 'confirm' && action !== 'reopen' && action !== 'complete') return;
+      if (action !== 'cancel' && action !== 'confirm' && action !== 'reopen' && action !== 'complete' && action !== 'reject') return;
       const prop = referenceRepository.findProperty(row.property_id);
       if (prop && prop.manager_id !== actor.id) {
         const verb = action === 'complete' ? 'completed' : `${action}ed`;

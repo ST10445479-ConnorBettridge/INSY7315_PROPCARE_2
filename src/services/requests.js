@@ -115,8 +115,10 @@ const TRANSITIONS = {
     onHoldUnused: [],
   },
   manager: {
-    submitted: ['assign', 'approve'],
-    'under-review': ['assign', 'approve'],
+    submitted: ['assign', 'approve', 'reject'],
+    'under-review': ['assign', 'approve', 'reject'],
+    // A rejection is not a dead end: the manager can reassign the work.
+    rejected: ['assign'],
     completed: ['approve'],
   },
   technician: {
@@ -137,7 +139,7 @@ function allowedActions(user, row) {
 }
 
 function canPerform(user, row, action) {
-  if (action === 'assign') return user.role === 'manager' && ['submitted', 'under-review'].indexOf(row.status) !== -1;
+  if (action === 'assign') return user.role === 'manager' && ['submitted', 'under-review', 'rejected'].indexOf(row.status) !== -1;
   if (action === 'rate') return user.role === 'tenant' && row.status === 'completed';
   return allowedActions(user, row).indexOf(action) !== -1;
 }
@@ -181,7 +183,12 @@ function applyStatusAction(user, id, action, text) {
   }
 
   const when = nowStamp();
-  const note = text || ACTION_NOTE[action] || 'Status updated.';
+  // "reject" is used by technicians (rejecting a job) and managers (rejecting
+  // the request itself), so the fallback note has to name the right actor.
+  const defaultNote = action === 'reject' && user.role === 'manager'
+    ? 'Request rejected by property manager.'
+    : null;
+  const note = text || defaultNote || ACTION_NOTE[action] || 'Status updated.';
   requestRepository.updateStatus(id, nextStatus, when.slice(0, 10));
   requestRepository.addHistory(id, statusLabel(nextStatus), when);
   requestRepository.addComment(id, user.id, user.name, roleLabel(user.role), note, when);
@@ -210,8 +217,8 @@ function assignRequest(manager, id, technicianId, urgency, note) {
   if (manager.role !== 'manager') {
     throw new AppError('Only a property manager can assign a technician.', 403);
   }
-  if (['submitted', 'under-review'].indexOf(row.status) === -1) {
-    throw new AppError('Only submitted or under-review requests can be assigned.', 400);
+  if (['submitted', 'under-review', 'rejected'].indexOf(row.status) === -1) {
+    throw new AppError('Only submitted, under-review or rejected requests can be assigned.', 400);
   }
   const tech = referenceRepository.findTechnician(technicianId);
   if (!tech) {

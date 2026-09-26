@@ -218,6 +218,9 @@
     mobile.innerHTML = items.map(function (n) { return link(n, 'mobile'); }).join('');
   }
 
+  // Displayed in the breadcrumb; refreshed whenever the admin saves settings.
+  var orgName = 'Horizon Property Group';
+
   function renderShell() {
     var user = state.user;
     document.getElementById('userName').textContent = user.name;
@@ -234,7 +237,7 @@
     if (seg === 'request') label = 'Request detail';
     if (seg === 'job') label = 'Job detail';
     if (seg === 'report') label = 'Report an issue';
-    bc.innerHTML = 'Horizon Property Group &rsaquo; <b>' + esc(roleLabel(user.role)) + '</b>' +
+    bc.innerHTML = esc(orgName) + ' &rsaquo; <b>' + esc(roleLabel(user.role)) + '</b>' +
       (label ? ' &rsaquo; ' + esc(label) : '');
   }
 
@@ -249,6 +252,7 @@
   function showLogin() {
     state.user = null;
     API.clearSession();
+    resetReportState();
     document.getElementById('loginScreen').classList.remove('hidden');
     document.getElementById('app').classList.add('hidden');
     document.getElementById('loginPassword').focus();
@@ -309,7 +313,24 @@
 
   function render(data) { body().innerHTML = data; }
 
-  function failUI(err) { render(errorUI(err.message || 'Please try again.')); }
+  function homeHash() {
+    return state.user && state.user.role === 'technician' ? '#/jobs' : '#/overview';
+  }
+
+  // 403/404 on a deep link (someone else's request, an admin-only screen)
+  // gets a plain explanation and a way out rather than a generic crash box.
+  function failUI(err) {
+    var code = err && err.status;
+    if (code === 403 || code === 404) {
+      var headline = code === 403 ? 'You do not have access to this.' : 'We could not find that page.';
+      render('<div class="error-banner" role="alert"><strong>' + headline + '</strong> ' +
+        esc(err.message || 'Ask an administrator if you think this is wrong.') + '</div>' +
+        '<div style="margin-top:14px"><button type="button" class="btn btn-accent" data-go="' +
+        homeHash() + '">Back to overview</button></div>');
+      return;
+    }
+    render(errorUI(err.message || 'Please try again.'));
+  }
 
   /* ============ OVERVIEW ============ */
   async function screenOverview() {
@@ -455,20 +476,26 @@
     var u = state.user;
     var qs = location.hash.split('?')[1] || '';
     var statusFilter = (qs.match(/status=([\w-]+)/) || [])[1] || 'all';
-    var search = (qs.match(/q=([^&]+)/) || [])[1] || '';
+    var rawSearch = (qs.match(/q=([^&]+)/) || [])[1] || '';
+    var statuses = ['all'].concat(openStatuses().concat(['completed', 'closed', 'cancelled', 'rejected']));
+    if (statuses.indexOf(statusFilter) === -1) statusFilter = 'all';
+    var search = '';
+    var searchText = '';
+    if (rawSearch) {
+      try { searchText = decodeURIComponent(rawSearch); } catch (e) { searchText = rawSearch; }
+      search = searchText.toLowerCase();
+    }
     try {
-      var params = '?';
-      if (statusFilter !== 'all') params += 'status=' + statusFilter + '&';
-      // searches happen client-side for snappy feedback
-      var data = await load('/api/requests');
+      // Status filtering happens server-side (?status= is honoured by
+      // GET /api/requests); search stays client-side for snappy feedback.
+      var url = '/api/requests' + (statusFilter === 'all' ? '' : '?status=' + encodeURIComponent(statusFilter));
+      var data = await load(url);
       var list = data.requests;
       if (search) {
-        search = decodeURIComponent(search).toLowerCase();
         list = list.filter(function (r) {
           return (r.title + ' ' + r.id + ' ' + (r.categoryName || '') + ' ' + r.unit).toLowerCase().indexOf(search) !== -1;
         });
       }
-      var statuses = ['all'].concat(openStatuses().concat(['completed', 'closed', 'cancelled', 'rejected']));
       var chips = statuses.map(function (s) {
         return '<span class="chip' + (statusFilter === s ? ' active' : '') + '" data-filter="' + s + '" tabindex="0" role="button" aria-pressed="' + (statusFilter === s) + '">' +
           (s === 'all' ? 'All statuses' : esc(statusLabel(s))) + '</span>';
@@ -478,27 +505,34 @@
         '<h3 class="card-title">' + (u.role === 'manager' ? 'Maintenance queue' : 'My requests') +
         '<small>' + list.length + ' visible</small></h3>' +
         '<label class="visually-hidden" for="reqSearch">Search requests</label>' +
-        '<input class="field" id="reqSearch" type="search" placeholder="Search requests" value="' + esc(search) + '">' +
+        '<input class="field" id="reqSearch" type="search" placeholder="Search requests" value="' + esc(searchText) + '">' +
         '<div class="category-row" style="margin-top:12px">' + chips + '</div></div>' +
         '<div class="req-list">' +
         (list.map(reqRow).join('') || '<div class="empty"><div class="big">\uD83D\uDD27</div>No requests match your search.</div>') +
         '</div>');
-      bindListControls(search);
+      bindListControls(statusFilter, searchText);
     } catch (e) { failUI(e); }
   }
 
-  function bindListControls(search) {
+  // Both filters live in the one hash so status + search compose instead of
+  // overwriting each other.
+  function requestsHref(statusFilter, search) {
+    var parts = [];
+    if (statusFilter && statusFilter !== 'all') parts.push('status=' + encodeURIComponent(statusFilter));
+    if (search) parts.push('q=' + encodeURIComponent(search));
+    return '#/requests' + (parts.length ? '?' + parts.join('&') : '');
+  }
+
+  function bindListControls(statusFilter, search) {
     var inp = document.getElementById('reqSearch');
     if (inp) {
       inp.addEventListener('input', function () {
-        var base = '#/requests';
-        if (search && inp.value === '') base += '?' + (location.hash.split('?')[1] || '');
-        location.hash = '#/requests?q=' + encodeURIComponent(inp.value);
+        location.hash = requestsHref(statusFilter, inp.value);
       });
     }
     body().querySelectorAll('.chip[data-filter]').forEach(function (c) {
       c.addEventListener('click', function () {
-        location.hash = '#/requests?status=' + c.getAttribute('data-filter');
+        location.hash = requestsHref(c.getAttribute('data-filter'), search);
       });
     });
   }
@@ -540,7 +574,12 @@
     if (role === 'manager') {
       if (req.status === 'submitted' || req.status === 'under-review') {
         actions = '<button type="button" class="btn btn-accent" data-act="assign">Review &amp; assign technician</button>' +
-          '<button type="button" class="btn btn-danger" data-act="cancel">Reject / cancel</button>';
+          '<button type="button" class="btn btn-success" data-act="approve">Approve &amp; close</button>' +
+          '<button type="button" class="btn btn-danger" data-act="reject">Reject request</button>';
+      }
+      if (req.status === 'rejected') {
+        // Rejection is reversible: send it back through the assignment flow.
+        actions = '<button type="button" class="btn btn-accent" data-act="assign">Review &amp; assign technician</button>';
       }
       if (req.status === 'completed') {
         actions = '<button type="button" class="btn btn-success" data-act="approve">Approve &amp; close</button>';
@@ -679,7 +718,7 @@
       confirmModal('Resume work on this job?', req.id, function () {
         performAction('resume', req).then(refresh).catch(function () {});
       });
-    } else if (act === 'reject') rejectModal(req, refresh);
+    } else if (act === 'reject') rejectModal(req, refresh, state.user.role);
     else if (act === 'complete') completeModal(req, refresh);
     else if (act === 'rate') rateModal(req, refresh);
     else if (act === 'assign') assignModal(req, refresh);
@@ -730,18 +769,26 @@
     }).catch(function (e) { toast(e.message); });
   }
 
-  function rejectModal(req, refresh) {
-    openModal('<h2 id="modalTitle">Reject job</h2><p>Tell the property manager why you are rejecting <b>' + esc(req.id) + '</b>.</p>' +
+  function rejectModal(req, refresh, role) {
+    var byManager = role === 'manager';
+    var label = byManager ? 'Reject request' : 'Reject job';
+    openModal('<h2 id="modalTitle">' + label + '</h2><p>' +
+      (byManager
+        ? 'Reject <b>' + esc(req.id) + '</b>? The request closes as rejected and can be reassigned later.'
+        : 'Tell the property manager why you are rejecting <b>' + esc(req.id) + '</b>.') +
+      '</p>' +
       '<label class="visually-hidden" for="rejectReason">Reason</label>' +
-      '<textarea class="field" id="rejectReason" placeholder="Reason (e.g. outside my trade, parts unavailable)"></textarea>' +
+      '<textarea class="field" id="rejectReason" placeholder="' +
+      (byManager ? 'Reason (optional - shared with the tenant)' : 'Reason (e.g. outside my trade, parts unavailable)') + '"></textarea>' +
       '<div class="modal-actions"><button type="button" class="btn btn-ghost" data-close="1">Cancel</button>' +
-      '<button type="button" class="btn btn-danger" id="rejectOk">Reject job</button></div>');
+      '<button type="button" class="btn btn-danger" id="rejectOk">' + label + '</button></div>');
     document.getElementById('rejectOk').addEventListener('click', function () {
       var b = this;
       b.disabled = true;
-      var why = document.getElementById('rejectReason').value.trim() || 'Job rejected by technician.';
+      var why = document.getElementById('rejectReason').value.trim() ||
+        (byManager ? 'Request rejected by property manager.' : 'Job rejected by technician.');
       API.post('/api/requests/' + req.id + '/status', { action: 'reject', text: why })
-        .then(function (res) { toast('Job rejected.'); closeModal(); refresh(res.data.request); })
+        .then(function (res) { toast(byManager ? 'Request rejected.' : 'Job rejected.'); closeModal(); refresh(res.data.request); })
         .catch(function (e) { toast(e.message || 'Could not reject.'); b.disabled = false; });
     });
     wireModalClose();
@@ -823,7 +870,14 @@
   /* ============ REPORT ISSUE WIZARD ============ */
   var reportState = { step: 1, cat: null, urg: 'normal', photos: 0, title: '', detail: '', unit: '' };
 
+  function resetReportState() {
+    reportState = { step: 1, cat: null, urg: 'normal', photos: 0, title: '', detail: '', unit: '' };
+  }
+
   async function screenReport() {
+    // A submitted wizard is a one-shot confirmation; reopening the screen
+    // (or handing the session to another user) starts a fresh report.
+    if (reportState.step >= 4) resetReportState();
     render(loadingUI('Preparing the report form…'));
     try {
       var d = await load('/api/categories');
@@ -1218,23 +1272,54 @@
       }).join('') + '</div>');
   }
 
-  function screenSettings() {
-    render(
-      '<div class="hero"><h1>System settings</h1><p>Configuration for the Obs Realty deployment.</p></div>' +
-      '<div class="grid two-col">' +
-      '<div class="card"><h3 class="card-title">Workspace</h3>' +
-      '<label class="field-label" for="wsName">Organisation name</label><input class="field" id="wsName" value="Horizon Property Group">' +
-      '<label class="field-label" for="wsNotif">Notification channel (Observer pattern)</label><select class="field" id="wsNotif"><option>In-app push + email</option><option>In-app push only</option><option>Email only</option></select>' +
-      '<div style="margin-top:14px"><button type="button" class="btn btn-accent" id="saveSet">Save settings</button></div></div>' +
-      '<div class="card"><h3 class="card-title">Security</h3>' +
-      '<ul style="margin:0;padding-left:18px;font-size:13.5px">' +
-      '<li>Passwords hashed with bcrypt (never stored in plain text)</li>' +
-      '<li>JWTs issued on login; refreshed on session restore</li>' +
-      '<li>Object-level authorisation: tenants only see their own requests</li>' +
-      '<li>Strict Content-Security-Policy on every response</li></ul></div></div>');
-    document.getElementById('saveSet').addEventListener('click', function () {
-      toast('Settings saved to the workspace.');
-    });
+  async function screenSettings() {
+    render(loadingUI('Loading settings…'));
+    try {
+      var d = await load('/api/settings');
+      var s = d.settings;
+      orgName = s.orgName;
+      renderShell();
+      render(
+        '<div class="hero"><h1>System settings</h1><p>Configuration for the Obs Realty deployment.</p></div>' +
+        '<div class="grid two-col">' +
+        '<div class="card"><h3 class="card-title">Workspace</h3>' +
+        '<label class="field-label" for="wsName">Organisation name</label><input class="field" id="wsName" value="' + esc(s.orgName) + '">' +
+        '<label class="field-label" for="wsNotif">Notification channel (Observer pattern)</label><select class="field" id="wsNotif">' +
+        ['In-app push + email', 'In-app push only', 'Email only'].map(function (c) {
+          return '<option' + (s.notifyChannel === c ? ' selected' : '') + '>' + esc(c) + '</option>';
+        }).join('') +
+        '</select>' +
+        '<div id="setError" class="form-error hidden" role="alert" style="margin-top:10px"></div>' +
+        '<div style="margin-top:14px"><button type="button" class="btn btn-accent" id="saveSet">Save settings</button></div></div>' +
+        '<div class="card"><h3 class="card-title">Security</h3>' +
+        '<ul style="margin:0;padding-left:18px;font-size:13.5px">' +
+        '<li>Passwords hashed with bcrypt (never stored in plain text)</li>' +
+        '<li>JWTs issued on login; refreshed on session restore</li>' +
+        '<li>Object-level authorisation: tenants only see their own requests</li>' +
+        '<li>Strict Content-Security-Policy on every response</li></ul></div></div>');
+      document.getElementById('saveSet').addEventListener('click', function () {
+        var b = this;
+        var errBox = document.getElementById('setError');
+        errBox.classList.add('hidden');
+        b.disabled = true;
+        var payload = {
+          orgName: document.getElementById('wsName').value.trim(),
+          notifyChannel: document.getElementById('wsNotif').value,
+        };
+        API.put('/api/settings', payload)
+          .then(function (res) {
+            toast(res.message || 'Settings saved.');
+            // Reflect the saved org name straight away.
+            orgName = res.data.settings.orgName;
+            renderShell();
+          })
+          .catch(function (e) {
+            errBox.textContent = e.message || 'Could not save the settings.';
+            errBox.classList.remove('hidden');
+          })
+          .finally(function () { b.disabled = false; });
+      });
+    } catch (e) { failUI(e); }
   }
 
   /* ============ MOCKUPS / DESIGN REFERENCE ============ */
@@ -1301,6 +1386,22 @@
   }
 
   /* ============ ROUTER ============ */
+  // Client-side mirror of the API's role rules: screens that belong to one
+  // role redirect home instead of rendering (or 403-ing) for everybody else.
+  var SCREEN_ROLES = {
+    users: ['admin'],
+    categories: ['admin'],
+    roles: ['admin'],
+    settings: ['admin'],
+    tenants: ['manager', 'admin'],
+    technicians: ['manager', 'admin'],
+    reports: ['manager', 'admin'],
+    jobs: ['technician'],
+    schedule: ['technician'],
+    completed: ['technician'],
+    report: ['tenant'],
+  };
+
   async function route() {
     if (!state.user) { showLogin(); return; }
     var hash = location.hash.replace(/^#\/?/, '');
@@ -1309,6 +1410,12 @@
     var id = parts[1] || '';
     renderShell();
     _urlCache = {};
+    var allowed = SCREEN_ROLES[seg];
+    if (allowed && allowed.indexOf(state.user.role) === -1) {
+      toast('You do not have access to that page.');
+      location.hash = homeHash();
+      return;
+    }
     try {
       if (seg === 'overview') return await screenOverview();
       if (seg === 'requests') return await screenRequests();
@@ -1409,8 +1516,10 @@
     });
     window.addEventListener('hashchange', function () { if (state.user) route(); });
     window.addEventListener('propcare:unauthorized', function () {
+      var wasSignedIn = !!state.user;
       showLogin();
-      toast('Session expired. Please sign in again.');
+      // Only claim the session expired when there actually was one.
+      if (wasSignedIn) toast('Session expired. Please sign in again.');
     });
     document.getElementById('appBody').addEventListener('click', function (e) {
       var card = e.target.closest('.request-item[data-id]');

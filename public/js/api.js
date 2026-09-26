@@ -47,8 +47,12 @@ window.PropCareAPI = (function () {
     try { data = await res.json(); } catch (e) { /* non-JSON body */ }
 
     if (res.status === 401) {
+      // A 401 on a plain sign-in attempt means bad credentials, not a dead
+      // session - only broadcast the "session expired" signal when this
+      // client actually held a token.
+      var hadSession = !!token();
       clearSession();
-      window.dispatchEvent(new CustomEvent('propcare:unauthorized'));
+      if (hadSession) window.dispatchEvent(new CustomEvent('propcare:unauthorized'));
       var unauthorized = new Error((data && data.message) || 'Session expired. Please sign in again.');
       unauthorized.status = 401;
       throw unauthorized;

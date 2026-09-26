@@ -121,6 +121,11 @@ CREATE TABLE IF NOT EXISTS ratings (
   stars      INTEGER NOT NULL CHECK (stars BETWEEN 1 AND 5),
   created_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS settings (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
 `;
 
 db.exec(SCHEMA);
@@ -235,6 +240,7 @@ const crypto = require('node:crypto');
   const insertRating = db.prepare(
     'INSERT INTO ratings (request_id, user_id, stars, created_at) VALUES (?, ?, ?, ?)'
   );
+  const insertSetting = db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)');
 
   const now = new Date().toISOString();
 
@@ -364,11 +370,11 @@ const crypto = require('node:crypto');
 
   const notifications = [
     ['U1', '\uD83D\uDD14', 'Reminder: technician visit scheduled for REQ-1045 tomorrow.', '2026-08-13 16:00'],
-    ['U1', '\u2705', 'REQ-1027 (dishwasher) marked complete - please confirm.', '2026-08-12 10:22'],
+    ['U5', '\u2705', 'REQ-1027 (dishwasher) marked complete - please confirm.', '2026-08-12 10:22'],
     ['U2', '\uD83D\uDD27', 'New request REQ-1078 awaiting review.', '2026-08-14 08:00'],
     ['U2', '\uD83D\uDD27', 'Johan van der Merwe started work on REQ-1045.', '2026-08-14 14:40'],
     ['U9', '\uD83D\uDD27', 'You have been assigned REQ-1045.', '2026-08-08 11:02'],
-    ['U9', '\u2705', 'Job REQ-1027 completed - awaiting tenant confirmation.', '2026-08-09 10:00'],
+    ['U13', '\u2705', 'Job REQ-1027 completed - awaiting tenant confirmation.', '2026-08-09 10:00'],
     ['U14', '\uD83C\uDFE2', 'Inspection completed at Milnerton Sands Unit 11.', '2026-08-10 12:05'],
   ];
   notifications.forEach(([userId, icon, title, createdAt]) => {
@@ -376,6 +382,9 @@ const crypto = require('node:crypto');
   });
 
   insertRating.run('REQ-1027', 'U5', 5, '2026-08-10 11:00');
+
+  insertSetting.run('org_name', 'Horizon Property Group');
+  insertSetting.run('notify_channel', 'In-app push + email');
 
   console.log(
     '[propcare] seeded database with ' +
@@ -614,6 +623,10 @@ requestAll: () => db.prepare(`
   adminCount: () => db.prepare("SELECT COUNT(*) AS n FROM users WHERE role = 'admin'"),
   propertyCount: () => db.prepare('SELECT COUNT(*) AS n FROM properties'),
   unitCount: () => db.prepare('SELECT COUNT(*) AS n FROM units'),
+  settingByKey: () => db.prepare('SELECT key, value FROM settings WHERE key = ?'),
+  upsertSetting: () => db.prepare(
+    'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'
+  ),
 };
 
 module.exports = {

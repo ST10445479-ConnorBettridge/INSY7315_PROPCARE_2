@@ -16,6 +16,7 @@ const tenantRoutes = require('./routes/tenants');
 const referenceRoutes = require('./routes/categories');
 const notificationRoutes = require('./routes/notifications');
 const reportRoutes = require('./routes/reports');
+const settingsRoutes = require('./routes/settings');
 
 const app = express();
 
@@ -160,6 +161,7 @@ app.get('/api', (req, res) => {
         technicians: 'GET /api/technicians',
         notifications: 'GET /api/notifications',
         reports: 'GET /api/reports/summary',
+        settings: 'GET/PUT /api/settings',
       },
     },
   });
@@ -179,6 +181,7 @@ app.use('/api/tenants', tenantRoutes);
 app.use('/api', referenceRoutes); // categories, statuses, urgencies
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api', settingsRoutes); // workspace settings (admin only)
 
 // SPA fallback - serve index.html for non-API routes.
 app.get(/^\/(?!api\/).*/, (req, res) => {
