@@ -2,6 +2,8 @@
 (function () {
   var API = window.PropCareAPI;
   var state = { user: null };
+  // Bumped on every render(); screens compare against it to drop stale work.
+  var _renderId = 0;
 
   /* ---------------- helpers ---------------- */
   function esc(s) {
@@ -11,11 +13,15 @@
   }
 
   function initials(name) {
-    return name.split(' ').map(function (w) { return w[0]; }).slice(0, 2).join('').toLowerCase();
+    var words = String(name == null ? '' : name).trim().split(/\s+/);
+    var out = words.map(function (w) { return w[0] || ''; }).slice(0, 2).join('');
+    return out ? out.toLowerCase() : '?';
   }
 
-  function statusClass(sid) { return 'st-' + sid; }
-  function urgClass(uid) { return 'urg-' + uid; }
+  // Class names are interpolated into markup, so only slug-safe characters
+  // ever reach the attribute - an unexpected id cannot break out of it.
+  function statusClass(sid) { return 'st-' + String(sid == null ? '' : sid).replace(/[^a-z0-9-]/gi, ''); }
+  function urgClass(uid) { return 'urg-' + String(uid == null ? '' : uid).replace(/[^a-z0-9-]/gi, ''); }
 
   function roleLabel(role) {
     return { tenant: 'Tenant', manager: 'Property Manager', technician: 'Technician', admin: 'Administrator' }[role] || role;
@@ -311,7 +317,22 @@
   /* ---------------- screens ---------------- */
   var body = function () { return document.getElementById('appBody'); };
 
-  function render(data) { body().innerHTML = data; }
+  function render(data) {
+    _renderId += 1;
+    body().innerHTML = data;
+  }
+
+  /**
+   * Async screens take a token after they paint their loading state and check
+   * it again before painting the result: if the user navigated away while the
+   * fetch was in flight, the stale response must not overwrite the new screen.
+   */
+  function loading(text) {
+    render(loadingUI(text));
+    return _renderId;
+  }
+
+  function still(id) { return id === _renderId; }
 
   function homeHash() {
     return state.user && state.user.role === 'technician' ? '#/jobs' : '#/overview';
@@ -342,7 +363,7 @@
   }
 
   async function tenantOverview() {
-    render(loadingUI('Loading your overview…'));
+    var me = loading('Loading your overview…');
     try {
       var buzz = await fetchOnce('/api/requests');
       var props = await fetchOnce('/api/properties');
@@ -354,6 +375,7 @@
       var name = state.user.name.split(' ')[0];
       var units = state.user.units || [];
       var avgResponse = formatDuration(meanResolutionHours(reqs));
+      if (!still(me)) return;
       render(
         '<div class="hero"><h1>Good ' + (new Date().getHours() < 12 ? 'morning' : 'afternoon') + ', ' + esc(name) + '</h1>' +
         '<p>' + today + ' &middot; Keep an eye on your home. We will keep you updated.</p></div>' +
@@ -378,11 +400,11 @@
         '<br>Units: ' + units.map(function (u) { return esc(u.name); }).join(', ') +
         '</p></div>' +
         '</div></div>');
-    } catch (e) { failUI(e); }
+    } catch (e) { if (still(me)) failUI(e); }
   }
 
   async function managerOverview() {
-    render(loadingUI('Loading your portfolio…'));
+    var me = loading('Loading your portfolio…');
     try {
       var buzz = await fetchOnce('/api/requests');
       var props = await fetchOnce('/api/properties');
@@ -391,11 +413,16 @@
       var reqs = buzz.requests;
       var open = reqs.filter(isOpen);
       var urgent = open.filter(function (r) { return r.urgency === 'urgent' || r.urgency === 'high'; }).length;
+      var rank = { urgent: 0, high: 1, normal: 2, low: 3 };
       var queue = reqs.slice().sort(function (a, b) {
-        return (a.urgency === b.urgency) ? 0 : (a.urgency === 'urgent' ? -1 : 1);
+        var ra = rank[a.urgency] == null ? 9 : rank[a.urgency];
+        var rb = rank[b.urgency] == null ? 9 : rank[b.urgency];
+        if (ra !== rb) return ra - rb;
+        return String(b.updated || '').localeCompare(String(a.updated || ''));
       });
       var name = state.user.name.split(' ')[0];
       var avgResponse = formatDuration(meanResolutionHours(reqs));
+      if (!still(me)) return;
       render(
         '<div class="hero"><h1>Good morning, ' + esc(name) + '</h1><p>Your managed portfolio &middot; ' +
         props.properties.length + ' properties &middot; ' + open.length + ' open maintenance requests.</p></div>' +
@@ -410,11 +437,11 @@
         queue.slice(0, 6).map(function (r) { return '<tr class="clickable" data-go="#/request/' + esc(r.id) + '" tabindex="0" role="link" aria-label="Open request ' + esc(r.id) + '">' + reqRowFor(r) + '</tr>'; }).join('') +
         '</tbody></table></div>' +
         '<button type="button" class="btn btn-ghost" style="margin-top:14px" data-go="#/requests">View all requests</button></div>');
-    } catch (e) { failUI(e); }
+    } catch (e) { if (still(me)) failUI(e); }
   }
 
   async function techOverview() {
-    render(loadingUI('Loading your jobs…'));
+    var me = loading('Loading your jobs…');
     try {
       var buzz = await fetchOnce('/api/requests');
       var reqs = buzz.requests;
@@ -424,6 +451,7 @@
       var monthName = new Date().toLocaleDateString('en-GB', { month: 'long' });
       var avgResponse = formatDuration(meanResolutionHours(reqs));
       var overdue = overdueRequests(jobs);
+      if (!still(me)) return;
       render(
         '<div class="hero"><h1>Good morning, ' + esc(state.user.name.split(' ')[0]) + '</h1><p>Today &middot; ' + today + ' &middot; ' +
         jobs.length + ' active job(s) in your queue.</p></div>' +
@@ -436,11 +464,11 @@
         '<div class="card"><h3 class="card-title">Assigned jobs</h3><div class="req-list">' +
         (jobs.map(reqRow).join('') || emptyUI('\uD83C\uDFAF', 'You have no active jobs right now.')) +
         '</div></div>');
-    } catch (e) { failUI(e); }
+    } catch (e) { if (still(me)) failUI(e); }
   }
 
   async function adminOverview() {
-    render(loadingUI('Loading system overview…'));
+    var me = loading('Loading system overview…');
     try {
       var buzz = await fetchOnce('/api/requests');
       var rep = (await fetchOnce('/api/reports/summary')).summary;
@@ -448,8 +476,9 @@
       var open = reqs.filter(isOpen);
       var cats = rep.byCategory || [];
       var statuses = rep.byStatus || [];
+      if (!still(me)) return;
       render(
-        '<div class="hero"><h1>System overview</h1><p>Obs Realty Group &middot; Horizon portfolio &middot; all tenants, properties, technicians and requests.</p></div>' +
+        '<div class="hero"><h1>System overview</h1><p>' + esc(orgName) + ' &middot; every tenant, property, technician and request.</p></div>' +
         '<div class="grid stat-grid">' +
         statCard(rep.users.tenants, 'Tenants', 'across the portfolio') +
         statCard(rep.properties, 'Properties', rep.units + ' active units') +
@@ -467,12 +496,12 @@
         reqs.slice(0, 5).map(function (r) {
           return '<div class="n-title">' + esc(r.id) + ' &middot; ' + esc(r.title) + '</div><div class="n-when">' + esc(r.updated) + '</div>';
         }).join('') + '</div></div></div>');
-    } catch (e) { failUI(e); }
+    } catch (e) { if (still(me)) failUI(e); }
   }
 
   /* ============ REQUESTS LIST ============ */
   async function screenRequests() {
-    render(loadingUI('Loading requests…'));
+    var me = loading('Loading requests…');
     var u = state.user;
     var qs = location.hash.split('?')[1] || '';
     var statusFilter = (qs.match(/status=([\w-]+)/) || [])[1] || 'all';
@@ -500,9 +529,10 @@
         return '<span class="chip' + (statusFilter === s ? ' active' : '') + '" data-filter="' + s + '" tabindex="0" role="button" aria-pressed="' + (statusFilter === s) + '">' +
           (s === 'all' ? 'All statuses' : esc(statusLabel(s))) + '</span>';
       }).join('');
+      if (!still(me)) return;
       render(
         '<div class="card" style="margin-bottom:16px">' +
-        '<h3 class="card-title">' + (u.role === 'manager' ? 'Maintenance queue' : 'My requests') +
+        '<h3 class="card-title">' + (u.role === 'manager' ? 'Maintenance queue' : (u.role === 'admin' ? 'All requests' : 'My requests')) +
         '<small>' + list.length + ' visible</small></h3>' +
         '<label class="visually-hidden" for="reqSearch">Search requests</label>' +
         '<input class="field" id="reqSearch" type="search" placeholder="Search requests" value="' + esc(searchText) + '">' +
@@ -511,7 +541,7 @@
         (list.map(reqRow).join('') || '<div class="empty"><div class="big">\uD83D\uDD27</div>No requests match your search.</div>') +
         '</div>');
       bindListControls(statusFilter, searchText);
-    } catch (e) { failUI(e); }
+    } catch (e) { if (still(me)) failUI(e); }
   }
 
   // Both filters live in the one hash so status + search compose instead of
@@ -539,11 +569,12 @@
 
   /* ============ REQUEST DETAIL ============ */
   async function screenRequest(id) {
-    render(loadingUI('Loading request…'));
+    var me = loading('Loading request…');
     try {
       var d = (await API.get('/api/requests/' + encodeURIComponent(id))).data.request;
+      if (!still(me)) return;
       renderRequestDetail(d);
-    } catch (e) { failUI(e); }
+    } catch (e) { if (still(me)) failUI(e); }
   }
 
   function renderRequestDetail(req) {
@@ -635,9 +666,6 @@
       '<button type="button" class="btn btn-accent btn-sm" style="margin-top:8px" data-act="comment">Post comment</button></div></div>' +
       '</div></div>');
 
-    body().querySelectorAll('[data-go]').forEach(function (e) {
-      e.addEventListener('click', function () { location.hash = e.getAttribute('data-go'); });
-    });
     body().querySelectorAll('[data-act]').forEach(function (e) {
       e.addEventListener('click', function () { handleRequestAction(e.getAttribute('data-act'), req); });
     });
@@ -686,8 +714,11 @@
   }
 
   function handleRequestAction(act, req) {
+    // Captured at click time: a slow mutation must not repaint a screen the
+    // user has since navigated away from.
+    var me = _renderId;
     function refresh(data) {
-      if (data) renderRequestDetail(data);
+      if (data) { if (still(me)) renderRequestDetail(data); }
       else route();
     }
     if (act === 'cancel') {
@@ -735,7 +766,6 @@
   }
 
   function assignModal(req, refresh) {
-    loadingUI('');
     load('/api/technicians').then(function (d) {
       var opts = d.technicians.map(function (t) {
         return '<option value="' + t.id + '"' + (t.skill === req.categoryName ? ' selected' : '') + '>' + esc(t.name) + ' (' + esc(t.skill) + ')</option>';
@@ -878,13 +908,14 @@
     // A submitted wizard is a one-shot confirmation; reopening the screen
     // (or handing the session to another user) starts a fresh report.
     if (reportState.step >= 4) resetReportState();
-    render(loadingUI('Preparing the report form…'));
+    var me = loading('Preparing the report form…');
     try {
       var d = await load('/api/categories');
       CATS = d.categories;
       if (!reportState.cat && d.categories.length) reportState.cat = d.categories[0].id;
+      if (!still(me)) return;
       renderReportStep();
-    } catch (e) { failUI(e); }
+    } catch (e) { if (still(me)) failUI(e); }
   }
   var CATS = [];
 
@@ -991,14 +1022,15 @@
 
   /* ============ PROPERTIES ============ */
   async function screenProperties() {
-    render(loadingUI('Loading properties…'));
+    var me = loading('Loading properties…');
     try {
       var d = await load('/api/properties');
       var list = d.properties;
       var u = state.user;
+      if (!still(me)) return;
       render(
-        '<div class="hero"><h1>' + (u.role === 'tenant' ? 'My property' : (u.role === 'admin' ? 'All properties' : 'Your managed portfolio')) + '</h1>' +
-        '<p>' + list.length + ' properties in the Horizon portfolio.</p></div>' +
+        '<div class="hero"><h1>' + (u.role === 'tenant' ? 'My property' : (u.role === 'admin' ? 'All properties' : (u.role === 'technician' ? 'Properties' : 'Your managed portfolio'))) + '</h1>' +
+        '<p>' + list.length + ' properties in the ' + esc(orgName) + ' portfolio.</p></div>' +
         '<div class="table-wrap card" style="overflow-x:auto"><table><thead><tr>' +
         '<th>Property</th><th>Location</th><th>Manager</th></tr></thead><tbody>' +
         list.map(function (p) {
@@ -1007,16 +1039,17 @@
             '<td class="trow-sub">' + esc(p.managerName || '-') + '</td></tr>';
         }).join('') +
         '</tbody></table></div>');
-    } catch (e) { failUI(e); }
+    } catch (e) { if (still(me)) failUI(e); }
   }
 
   /* ============ TECHNICIANS (manager) ============ */
   async function screenTechnicians() {
-    render(loadingUI('Loading technicians…'));
+    var me = loading('Loading technicians…');
     try {
       var d = await load('/api/technicians');
       var buzz = await fetchOnce('/api/requests');
       var all = buzz.requests;
+      if (!still(me)) return;
       render(
         '<div class="hero"><h1>Technicians</h1><p>' + d.technicians.length + ' maintenance technicians on the service plan &middot; workloads tracked per request.</p></div>' +
         '<div class="grid three-col">' + d.technicians.map(function (t) {
@@ -1028,14 +1061,15 @@
             '<span class="badge st-in-progress">' + active + ' active</span> ' +
             '<span class="badge st-closed">' + jobs.length + ' total</span></div>';
         }).join('') + '</div>');
-    } catch (e) { failUI(e); }
+    } catch (e) { if (still(me)) failUI(e); }
   }
 
   /* ============ TENANTS (manager / admin) ============ */
   async function screenTenants() {
-    render(loadingUI('Loading tenants…'));
+    var me = loading('Loading tenants…');
     try {
       var d = await load('/api/tenants');
+      if (!still(me)) return;
       render(
         '<div class="hero"><h1>Tenants</h1><p>' + d.tenants.length + ' tenants across the managed portfolio.</p></div>' +
         '<div class="table-wrap card" style="overflow-x:auto"><table><thead><tr>' +
@@ -1046,17 +1080,18 @@
             '<td><span class="badge ' + (t.openRequests > 0 ? 'st-in-progress' : 'st-closed') + '">' + t.openRequests + ' open</span></td></tr>';
         }).join('') +
         '</tbody></table></div>');
-    } catch (e) { failUI(e); }
+    } catch (e) { if (still(me)) failUI(e); }
   }
 
   /* ============ REPORTS ============ */
   async function screenReports() {
-    render(loadingUI('Generating reports…'));
+    var me = loading('Generating reports…');
     try {
       var d = await load('/api/reports/summary');
       var s = d.summary;
       var isAdmin = state.user.role === 'admin';
       var varRow = function (a, b) { return '<div class="inline-stat"><span>' + esc(a) + '</span><b>' + esc(b) + '</b></div>'; };
+      if (!still(me)) return;
       render(
         '<div class="hero"><h1>Maintenance reports</h1><p>' + s.total + ' requests total &middot; ' + s.open +
         ' open &middot; ' + s.resolved + ' resolved.</p></div>' +
@@ -1079,7 +1114,7 @@
         '<div class="card" style="margin-top:16px"><h3 class="card-title">Export</h3>' +
         '<button type="button" class="btn btn-teal" data-export="1">Download CSV report</button></div>');
       body().querySelector('[data-export]').addEventListener('click', function () { exportCsv(s); });
-    } catch (e) { failUI(e); }
+    } catch (e) { if (still(me)) failUI(e); }
   }
 
   function exportCsv(s) {
@@ -1104,17 +1139,18 @@
 
   /* ============ NOTIFICATIONS ============ */
   async function screenNotifications() {
-    render(loadingUI('Loading activity…'));
+    var me = loading('Loading activity…');
     try {
       var d = await load('/api/notifications');
       var nots = d.notifications;
+      if (!still(me)) return;
       render(
         '<div class="hero" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">' +
         '<div><h1>Activity centre</h1><p>Important updates, without the message sprawl.</p></div>' +
         '<button type="button" class="btn btn-teal" id="markAll" ' + (d.unread === 0 ? 'disabled' : '') + '>Mark all read</button></div>' +
         '<div class="card">' +
         (nots.map(function (n) {
-          return '<div class="notif"><span class="n-ico">' + n.icon + '</span>' +
+          return '<div class="notif"><span class="n-ico">' + esc(n.icon) + '</span>' +
             '<div><div class="n-title">' + esc(n.title) + '</div><div class="n-when">' + esc(n.when) + '</div></div>' +
             (n.unread ? '<span class="badge st-in-progress" style="margin-left:auto">New</span>' : '') + '</div>';
         }).join('') || emptyUI('\uD83D\uDD14', 'No notifications yet.')) +
@@ -1124,31 +1160,32 @@
           .then(function () { toast('All notifications marked as read.'); screenNotifications(); })
           .catch(function (e) { toast(e.message); });
       });
-    } catch (e) { failUI(e); }
+    } catch (e) { if (still(me)) failUI(e); }
   }
 
   /* ============ TECHNICIAN: JOBS / SCHEDULE / COMPLETED ============ */
   async function screenJobs() {
-    render(loadingUI('Loading your jobs…'));
+    var me = loading('Loading your jobs…');
     try {
       var d = await load('/api/requests');
       var jobs = d.requests.filter(isOpen);
       var accept = jobs.filter(function (r) { return r.status === 'assigned'; });
+      if (!still(me)) return;
       render(
         '<div class="hero"><h1>Assigned jobs</h1><p>' + jobs.length + ' active job(s) &middot; ' + accept.length + ' awaiting your acceptance.</p></div>' +
         '<div class="req-list">' +
         (jobs.map(function (r) {
-          return '<div class="request-item" data-id="' + r.id + '" tabindex="0" role="link" aria-label="Open job ' + esc(r.id) + '"><div>' +
+          return '<div class="request-item" data-id="' + esc(r.id) + '" tabindex="0" role="link" aria-label="Open job ' + esc(r.id) + '"><div>' +
             '<div class="r-main">' + esc(r.title) + '</div>' +
             '<div class="r-sub">' + esc(r.id) + ' &middot; ' + esc(r.unit) + ' &middot; ' + esc(r.propertyName || '') + '</div></div>' +
             '<div class="r-right">' + badge(r.status) + '</div></div>';
         }).join('') || emptyUI('\uD83C\uDFAF', 'You have no active jobs right now.')) +
         '</div>');
-    } catch (e) { failUI(e); }
+    } catch (e) { if (still(me)) failUI(e); }
   }
 
   async function screenSchedule() {
-    render(loadingUI('Loading your schedule…'));
+    var me = loading('Loading your schedule…');
     try {
       var d = await load('/api/requests');
       var jobs = d.requests.filter(isOpen);
@@ -1160,35 +1197,38 @@
           '<td>' + (r ? esc(r.id) + '<div class="trow-sub">' + esc(r.propertyName || '') + '</div>' : '-') + '</td>' +
           '<td>' + (r ? '<button type="button" class="btn btn-sm btn-ghost" data-go="#/job/' + esc(r.id) + '">Open</button>' : '-') + '</td></tr>';
       }).join('');
+      if (!still(me)) return;
       render(
         '<div class="hero"><h1>Schedule</h1><p>Planned maintenance visits for the coming week.</p></div>' +
         '<div class="table-wrap card" style="overflow-x:auto"><table><thead><tr><th>Day</th><th>Job</th><th>Request</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>');
-    } catch (e) { failUI(e); }
+    } catch (e) { if (still(me)) failUI(e); }
   }
 
   async function screenCompleted() {
-    render(loadingUI('Loading completed jobs…'));
+    var me = loading('Loading completed jobs…');
     try {
       var d = await load('/api/requests');
       var done = d.requests.filter(function (r) { return r.status === 'completed' || r.status === 'closed'; });
+      if (!still(me)) return;
       render(
         '<div class="hero"><h1>Completed jobs</h1><p>' + done.length + ' jobs completed, verified with before/after photos.</p></div>' +
         '<div class="req-list">' +
         (done.map(function (r) {
-          return '<div class="request-item" data-id="' + r.id + '" tabindex="0" role="link" aria-label="Open job ' + esc(r.id) + '"><div>' +
+          return '<div class="request-item" data-id="' + esc(r.id) + '" tabindex="0" role="link" aria-label="Open job ' + esc(r.id) + '"><div>' +
             '<div class="r-main">' + esc(r.title) + '</div>' +
             '<div class="r-sub">' + esc(r.id) + ' &middot; ' + esc(r.unit) + '</div></div>' +
             '<div class="r-right">' + badge(r.status) + '</div></div>';
         }).join('') || emptyUI('\uD83D\uDD27', 'No completed jobs yet.')) +
         '</div>');
-    } catch (e) { failUI(e); }
+    } catch (e) { if (still(me)) failUI(e); }
   }
 
   /* ============ ADMIN SCREENS ============ */
   async function screenUsers() {
-    render(loadingUI('Loading users…'));
+    var me = loading('Loading users…');
     try {
       var d = await load('/api/users');
+      if (!still(me)) return;
       render(
         '<div class="hero" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">' +
         '<div><h1>Users</h1><p>All accounts across the platform &middot; role-based access control (RBAC) enforced server-side.</p></div>' +
@@ -1212,7 +1252,7 @@
             .catch(function (e) { toast(e.message); });
         });
       });
-    } catch (e) { failUI(e); }
+    } catch (e) { if (still(me)) failUI(e); }
   }
 
   function addUserModal() {
@@ -1243,9 +1283,10 @@
   }
 
   async function screenCategories() {
-    render(loadingUI('Loading categories…'));
+    var me = loading('Loading categories…');
     try {
       var d = await load('/api/categories');
+      if (!still(me)) return;
       render(
         '<div class="hero"><h1>Maintenance categories</h1><p>Consistent classification for every request.</p></div>' +
         '<div class="grid three-col">' + d.categories.map(function (c) {
@@ -1254,7 +1295,7 @@
         }).join('') + '</div>' +
         '<p style="color:var(--muted);font-size:13px;margin-top:14px">Categories drive the report-an-issue wizard and the recurring-issue reports.</p>');
       body().querySelectorAll('[data-preset]').forEach(function (b) { b.addEventListener('click', function () { toast('Categories are pre-configured for the portfolio.'); }); });
-    } catch (e) { failUI(e); }
+    } catch (e) { if (still(me)) failUI(e); }
   }
 
   function screenRoles() {
@@ -1273,14 +1314,15 @@
   }
 
   async function screenSettings() {
-    render(loadingUI('Loading settings…'));
+    var me = loading('Loading settings…');
     try {
       var d = await load('/api/settings');
       var s = d.settings;
+      if (!still(me)) return;
       orgName = s.orgName;
       renderShell();
       render(
-        '<div class="hero"><h1>System settings</h1><p>Configuration for the Obs Realty deployment.</p></div>' +
+        '<div class="hero"><h1>System settings</h1><p>Configuration for the ' + esc(orgName) + ' deployment.</p></div>' +
         '<div class="grid two-col">' +
         '<div class="card"><h3 class="card-title">Workspace</h3>' +
         '<label class="field-label" for="wsName">Organisation name</label><input class="field" id="wsName" value="' + esc(s.orgName) + '">' +
@@ -1312,6 +1354,8 @@
             // Reflect the saved org name straight away.
             orgName = res.data.settings.orgName;
             renderShell();
+            // Re-paint so the hero copy matches the name just saved.
+            screenSettings();
           })
           .catch(function (e) {
             errBox.textContent = e.message || 'Could not save the settings.';
@@ -1319,7 +1363,7 @@
           })
           .finally(function () { b.disabled = false; });
       });
-    } catch (e) { failUI(e); }
+    } catch (e) { if (still(me)) failUI(e); }
   }
 
   /* ============ MOCKUPS / DESIGN REFERENCE ============ */
