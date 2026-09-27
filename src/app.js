@@ -106,6 +106,12 @@ const corsDelegate = (req, callback) => {
   callback(null, { origin: allow });
 };
 app.use(cors(corsDelegate));
+// The photo-upload route carries a base64-encoded image, so it needs a much
+// higher body-size ceiling than the rest of the API. Mounting a path-scoped
+// parser ahead of the general one means only this one route pays for it -
+// body-parser only ever runs the first json() middleware that matches a
+// given request, so the 32 KB cap below still applies to everything else.
+app.use(/^\/api\/requests\/[^/]+\/photos$/, express.json({ limit: '8mb' }));
 app.use(express.json({ limit: '32kb' }));
 if (!isTest) app.use(morgan('short'));
 
@@ -130,16 +136,6 @@ app.use((err, req, res, next) => {
 // Static front end (Task 2 app) - cached for performance.
 app.use(
   express.static(path.join(__dirname, '..', 'public'), {
-    maxAge: isTest ? 0 : '1h',
-    setHeaders: (res) => {
-      res.setHeader('X-Content-Type-Options', 'nosniff');
-    },
-  })
-);
-
-// Also expose the prototype UI folder so we can use it as the main SPA
-app.use(
-  express.static(path.join(__dirname, '..', 'prototype'), {
     maxAge: isTest ? 0 : '1h',
     setHeaders: (res) => {
       res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -195,8 +191,7 @@ app.use('/api', settingsRoutes); // workspace settings (admin only)
 
 // SPA fallback - serve index.html for non-API routes.
 app.get(/^\/(?!api\/).*/, (req, res) => {
-  // Serve the prototype home screen as the SPA entrypoint
-  res.sendFile(path.join(__dirname, '..', 'prototype', 'index.html'));
+  res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });
 
 app.use(notFoundHandler);

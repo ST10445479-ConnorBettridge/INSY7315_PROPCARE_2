@@ -174,7 +174,8 @@ async function tenantSuite(browser) {
   await page.waitForSelector('#repTitle');
   await page.type('#repTitle', 'Automated browser probe leak');
   await page.type('#repDetail', 'End-to-end test request created by the headless browser suite.');
-  await page.click('#addPhoto'); // attach 1 photo
+  const repPhotoInput = await page.$('#repPhotos');
+  await repPhotoInput.uploadFile(path.join(__dirname, 'fixtures', 'tiny.png'));
   await page.waitForFunction(() => document.getElementById('appBody').textContent.includes('Photos (1)'));
   await page.click('#nextStep'); // submit
   await page.waitForFunction(() => document.getElementById('appBody').textContent.includes('Issue submitted'), { timeout: 10000 });

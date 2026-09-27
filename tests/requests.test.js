@@ -322,7 +322,10 @@ describe('Requests API - comments, photos and rating', () => {
     expect(res.status).toBe(400);
   });
 
-  it('lets a tenant attach a photo to their request', async () => {
+  const TINY_PNG_BASE64 =
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+
+  it('lets a tenant attach a real photo to their request', async () => {
     const token = await login('sarahwilliams@example.com');
     const before = await request(app)
       .get('/api/requests/REQ-1061')
@@ -331,10 +334,34 @@ describe('Requests API - comments, photos and rating', () => {
 
     const res = await request(app)
       .post('/api/requests/REQ-1061/photos')
-      .set('Authorization', `Bearer ${token}`);
+      .set('Authorization', `Bearer ${token}`)
+      .send({ filename: 'leak.png', mimeType: 'image/png', data: TINY_PNG_BASE64 });
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(201);
     expect(res.body.data.request.photos).toBe(photosBefore + 1);
+    const photoList = res.body.data.request.photoList;
+    expect(photoList[photoList.length - 1].filename).toBe('leak.png');
+    expect(photoList[photoList.length - 1].dataUrl).toBe(`data:image/png;base64,${TINY_PNG_BASE64}`);
+  });
+
+  it('rejects a photo upload with an unsupported file type', async () => {
+    const token = await login('sarahwilliams@example.com');
+    const res = await request(app)
+      .post('/api/requests/REQ-1061/photos')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ filename: 'notes.txt', mimeType: 'text/plain', data: TINY_PNG_BASE64 });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects a photo upload with no data', async () => {
+    const token = await login('sarahwilliams@example.com');
+    const res = await request(app)
+      .post('/api/requests/REQ-1061/photos')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ filename: 'leak.png', mimeType: 'image/png', data: '' });
+
+    expect(res.status).toBe(400);
   });
 
 it('rejects rating a request that is not completed', async () => {

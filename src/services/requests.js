@@ -103,6 +103,14 @@ function getDetail(user, id) {
   }));
   const rating = requestRepository.findRating(id);
   detail.rating = rating ? rating.stars : null;
+  detail.photoList = requestRepository.findPhotos(id).map((p) => ({
+    id: p.id,
+    filename: p.filename,
+    mimeType: p.mime_type,
+    sizeBytes: p.size_bytes,
+    when: p.created_at,
+    dataUrl: 'data:' + p.mime_type + ';base64,' + p.data,
+  }));
   return detail;
 }
 
@@ -285,7 +293,41 @@ function commentOnRequest(user, id, text) {
   return getDetail(user, id);
 }
 
-function addPhoto(user, id) {
+const ALLOWED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5 MB decoded
+
+/** Decodes and validates a base64 photo payload. Throws AppError on any problem. */
+function decodePhotoPayload(mimeType, base64Data) {
+  if (!mimeType || ALLOWED_PHOTO_TYPES.indexOf(mimeType) === -1) {
+    throw new AppError(
+      `Unsupported image type. Allowed types: ${ALLOWED_PHOTO_TYPES.join(', ')}.`,
+      400
+    );
+  }
+  if (!base64Data || typeof base64Data !== 'string') {
+    throw new AppError('Photo data is required.', 400);
+  }
+  // Accept both a bare base64 string and a full data: URI.
+  const cleaned = base64Data.replace(/^data:[^;]+;base64,/, '');
+  let buffer;
+  try {
+    buffer = Buffer.from(cleaned, 'base64');
+  } catch (e) {
+    throw new AppError('Photo data is not valid base64.', 400);
+  }
+  if (!buffer.length) {
+    throw new AppError('Photo data is empty.', 400);
+  }
+  if (buffer.length > MAX_PHOTO_BYTES) {
+    throw new AppError(
+      `Photo is too large. Maximum size is ${Math.round(MAX_PHOTO_BYTES / (1024 * 1024))} MB.`,
+      413
+    );
+  }
+  return { buffer, cleaned };
+}
+
+function addPhoto(user, id, photo) {
   const row = requestRepository.find(id);
   if (!row) {
     throw new AppError(`Request ${id} not found`, 404);
@@ -293,7 +335,19 @@ function addPhoto(user, id) {
   if (!canView(user, row)) {
     throw new AppError('You do not have permission to update this request.', 403);
   }
-  requestRepository.addPhoto(id, nowStamp().slice(0, 10));
+  const filename = (photo && typeof photo.filename === 'string' && photo.filename.trim())
+    || 'photo.jpg';
+  const { buffer, cleaned } = decodePhotoPayload(photo && photo.mimeType, photo && photo.data);
+
+  requestRepository.addPhoto({
+    requestId: id,
+    uploadedBy: user.id,
+    filename: filename.slice(0, 120),
+    mimeType: photo.mimeType,
+    sizeBytes: buffer.length,
+    data: cleaned,
+    when: nowStamp(),
+  });
   return getDetail(user, id);
 }
 

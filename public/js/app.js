@@ -234,6 +234,7 @@
     av.textContent = initials(user.name);
     av.className = 'avatar role-' + user.role;
     document.getElementById('userAvatar').setAttribute('aria-label', user.name);
+    document.getElementById('userRoleLabel').textContent = roleLabel(user.role);
     renderNav();
     var bc = document.getElementById('breadcrumb');
     var seg = activeKey();
@@ -631,8 +632,10 @@
       }
     }
 
-    var photoTiles = '';
-    for (var i = 0; i < (req.photos || 0); i++) photoTiles += '<span class="photo-tile">\uD83D\uDDBC\uFE0F</span>';
+    var photoList = req.photoList || [];
+    var photoTiles = photoList.map(function (p) {
+      return '<span class="photo-tile"><img src="' + p.dataUrl + '" alt="Photo attached to ' + esc(req.id) + ': ' + esc(p.filename) + '"></span>';
+    }).join('');
 
     render(
       '<div class="grid two-col">' +
@@ -647,9 +650,13 @@
       '<span class="chip chip-teal">' + esc(req.categoryName) + '</span>' +
       '<span class="chip ' + urgClass(req.urgency) + '">' + esc(urgName(req.urgency)) + ' urgency</span></div>' +
       '<h3 class="card-title" style="margin-top:16px">Photos</h3>' +
-      (photoTiles || '<p style="color:var(--muted);font-size:13px">No photos attached.</p>') +
+      '<div id="photoTiles">' + (photoTiles || '<p style="color:var(--muted);font-size:13px">No photos attached.</p>') + '</div>' +
       ((role === 'technician' || role === 'tenant' || role === 'manager') ?
-        '<div style="margin-top:8px"><button type="button" class="btn btn-ghost btn-sm" data-act="upload">+ Upload photo</button></div>' : '') +
+        '<div style="margin-top:8px">' +
+        '<label class="btn btn-ghost btn-sm" for="photoFileInput" style="display:inline-flex">+ Upload photo</label>' +
+        '<input type="file" id="photoFileInput" accept="image/jpeg,image/png,image/webp" class="visually-hidden">' +
+        '<span id="photoUploadStatus" style="margin-left:10px;font-size:12.5px;color:var(--muted)"></span>' +
+        '</div>' : '') +
       '<div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap">' + actions + '</div></div>' +
       '<div>' +
       '<div class="card" style="margin-bottom:16px"><h3 class="card-title">Status history</h3><ul class="timeline">' +
@@ -669,6 +676,52 @@
     body().querySelectorAll('[data-act]').forEach(function (e) {
       e.addEventListener('click', function () { handleRequestAction(e.getAttribute('data-act'), req); });
     });
+
+    var photoInput = document.getElementById('photoFileInput');
+    if (photoInput) {
+      photoInput.addEventListener('change', function () {
+        var file = photoInput.files && photoInput.files[0];
+        photoInput.value = '';
+        if (!file) return;
+        uploadPhoto(req, file);
+      });
+    }
+  }
+
+  var PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+  var PHOTO_MAX_BYTES = 5 * 1024 * 1024;
+
+  function uploadPhoto(req, file) {
+    var statusEl = document.getElementById('photoUploadStatus');
+    if (PHOTO_TYPES.indexOf(file.type) === -1) {
+      toast('Photos must be JPEG, PNG or WebP.');
+      return;
+    }
+    if (file.size > PHOTO_MAX_BYTES) {
+      toast('Photo must be 5 MB or smaller.');
+      return;
+    }
+    var me = _renderId;
+    if (statusEl) statusEl.textContent = 'Uploading ' + file.name + '…';
+    var reader = new FileReader();
+    reader.onerror = function () {
+      if (statusEl) statusEl.textContent = '';
+      toast('Could not read that file.');
+    };
+    reader.onload = function () {
+      API.post('/api/requests/' + req.id + '/photos', {
+        filename: file.name,
+        mimeType: file.type,
+        data: reader.result,
+      }).then(function (res) {
+        toast('Photo uploaded.');
+        if (still(me)) renderRequestDetail(res.data.request);
+      }).catch(function (e) {
+        if (statusEl) statusEl.textContent = '';
+        toast(e.message || 'Photo upload failed.');
+      });
+    };
+    reader.readAsDataURL(file);
   }
 
   async function mutation(path, method, payload, successMsg) {
@@ -708,7 +761,6 @@
         if (!c) { toast('Write a comment first.'); return; }
         return mutation('/api/requests/' + req.id + '/comments', 'post', { text: c }, 'Comment posted.');
       }
-      case 'upload': return mutation('/api/requests/' + req.id + '/photos', 'post', {}, 'Photo uploaded.');
       default: return null;
     }
   }
@@ -828,16 +880,32 @@
     openModal('<h2 id="modalTitle">Mark job complete</h2><p>Summarise the work done on <b>' + esc(req.id) + '</b>.</p>' +
       '<label class="visually-hidden" for="completeNote">Work summary</label>' +
       '<textarea class="field" id="completeNote" placeholder="Work completed summary..."></textarea>' +
+      '<label class="field-label" for="completePhoto">After photo (optional)</label>' +
+      '<input type="file" id="completePhoto" accept="image/jpeg,image/png,image/webp" class="field">' +
       '<div class="modal-actions"><button type="button" class="btn btn-ghost" data-close="1">Cancel</button>' +
       '<button type="button" class="btn btn-success" id="completeOk">Mark complete</button></div>');
     document.getElementById('completeOk').addEventListener('click', function () {
       var b = this;
       b.disabled = true;
       var note = document.getElementById('completeNote').value.trim() || 'Work completed by technician.';
+      var file = document.getElementById('completePhoto').files[0];
       API.post('/api/requests/' + req.id + '/status', { action: 'complete', text: note })
         .then(function (res) {
-          // Attach an after photo like in production flow.
-          return API.post('/api/requests/' + req.id + '/photos', {}).then(function () { return res; });
+          if (!file) return res;
+          if (PHOTO_TYPES.indexOf(file.type) === -1 || file.size > PHOTO_MAX_BYTES) {
+            toast(file.size > PHOTO_MAX_BYTES ? 'After photo must be 5 MB or smaller - job completed without it.' : 'After photo must be JPEG, PNG or WebP - job completed without it.');
+            return res;
+          }
+          return new Promise(function (resolve) {
+            var reader = new FileReader();
+            reader.onerror = function () { toast('Could not read the after photo - job completed without it.'); resolve(res); };
+            reader.onload = function () {
+              API.post('/api/requests/' + req.id + '/photos', { filename: file.name, mimeType: file.type, data: reader.result })
+                .then(function (photoRes) { resolve(photoRes); })
+                .catch(function () { toast('After photo could not be uploaded - job completed without it.'); resolve(res); });
+            };
+            reader.readAsDataURL(file);
+          });
         })
         .then(function (res) {
           toast(req.id + ' marked complete - awaiting tenant confirmation.');
@@ -898,10 +966,10 @@
   }
 
   /* ============ REPORT ISSUE WIZARD ============ */
-  var reportState = { step: 1, cat: null, urg: 'normal', photos: 0, title: '', detail: '', unit: '' };
+  var reportState = { step: 1, cat: null, urg: 'normal', photoFiles: [], title: '', detail: '', unit: '' };
 
   function resetReportState() {
-    reportState = { step: 1, cat: null, urg: 'normal', photos: 0, title: '', detail: '', unit: '' };
+    reportState = { step: 1, cat: null, urg: 'normal', photoFiles: [], title: '', detail: '', unit: '' };
   }
 
   async function screenReport() {
@@ -945,8 +1013,14 @@
         '<label class="field-label" for="repTitle">Short title</label><input class="field" id="repTitle" placeholder="e.g. Kitchen sink leaking" value="' + esc(s.title) + '">' +
         '<label class="field-label" for="repDetail">Details</label><textarea class="field" id="repDetail" placeholder="What is happening and since when?">' + esc(s.detail) + '</textarea>' +
         '<label class="field-label" for="repUnit">Unit</label><select class="field" id="repUnit">' + unitOpts + '</select>' +
-        '<label class="field-label">Photos (' + s.photos + ')</label>' +
-        '<div><button type="button" class="btn btn-ghost btn-sm" id="addPhoto">+ Add photo</button></div></div>';
+        '<label class="field-label" for="repPhotos">Photos (' + s.photoFiles.length + ')</label>' +
+        '<input type="file" id="repPhotos" accept="image/jpeg,image/png,image/webp" multiple class="field">' +
+        '<div id="repPhotoPreview" style="margin-top:8px">' +
+        s.photoFiles.map(function (pf, idx) {
+          return '<span class="photo-tile"><img src="' + pf.previewUrl + '" alt="' + esc(pf.file.name) + '">' +
+            '<button type="button" class="photo-remove" data-remove-photo="' + idx + '" aria-label="Remove ' + esc(pf.file.name) + '">&times;</button></span>';
+        }).join('') +
+        '</div></div>';
     }
 
     render(
@@ -994,11 +1068,29 @@
         next.disabled = true;
         next.textContent = 'Submitting…';
         API.post('/api/requests', {
-          category: s.cat, urgency: s.urg, title: title, detail: detail, unit: unit, photos: s.photos
-        }).then(function () {
+          category: s.cat, urgency: s.urg, title: title, detail: detail, unit: unit
+        }).then(function (res) {
+          var newId = res.data.request.id;
+          var files = s.photoFiles;
+          var failures = 0;
+          function uploadNext(i) {
+            if (i >= files.length) return Promise.resolve();
+            return new Promise(function (resolve) {
+              var reader = new FileReader();
+              reader.onerror = function () { failures++; resolve(); };
+              reader.onload = function () {
+                API.post('/api/requests/' + newId + '/photos', {
+                  filename: files[i].file.name, mimeType: files[i].file.type, data: reader.result,
+                }).then(function () { resolve(); }).catch(function () { failures++; resolve(); });
+              };
+              reader.readAsDataURL(files[i].file);
+            }).then(function () { return uploadNext(i + 1); });
+          }
+          return uploadNext(0).then(function () { return failures; });
+        }).then(function (failures) {
           s.step = 4;
           renderReportStep();
-          toast('Maintenance request submitted.');
+          toast(failures ? 'Request submitted - ' + failures + ' photo(s) failed to upload.' : 'Maintenance request submitted.');
         }).catch(function (e) {
           toast(e.message || 'Could not submit the request.');
           next.disabled = false;
@@ -1016,8 +1108,25 @@
     });
     var prev = document.getElementById('prevStep');
     if (prev) prev.addEventListener('click', function () { s.step -= 1; renderReportStep(); });
-    var ap = document.getElementById('addPhoto');
-    if (ap) ap.addEventListener('click', function () { s.photos += 1; toast('Photo attached.'); renderReportStep(); });
+    var repPhotos = document.getElementById('repPhotos');
+    if (repPhotos) repPhotos.addEventListener('change', function () {
+      var files = Array.prototype.slice.call(repPhotos.files || []);
+      repPhotos.value = '';
+      files.forEach(function (file) {
+        if (PHOTO_TYPES.indexOf(file.type) === -1) { toast(file.name + ' is not a JPEG, PNG or WebP image.'); return; }
+        if (file.size > PHOTO_MAX_BYTES) { toast(file.name + ' is larger than 5 MB.'); return; }
+        s.photoFiles.push({ file: file, previewUrl: URL.createObjectURL(file) });
+      });
+      renderReportStep();
+    });
+    body().querySelectorAll('[data-remove-photo]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var idx = Number(btn.getAttribute('data-remove-photo'));
+        URL.revokeObjectURL(s.photoFiles[idx].previewUrl);
+        s.photoFiles.splice(idx, 1);
+        renderReportStep();
+      });
+    });
   }
 
   /* ============ PROPERTIES ============ */

@@ -126,6 +126,23 @@ CREATE TABLE IF NOT EXISTS settings (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+
+-- Real uploaded photo files (base64-encoded), replacing the old bare counter.
+-- Stored in SQLite rather than on disk because Render's Free plan gives the
+-- app no persistent disk either way (see README) - the database is already
+-- the single source of ephemeral state, so this keeps the storage story
+-- consistent instead of adding a second, differently-ephemeral place to lose
+-- data on restart.
+CREATE TABLE IF NOT EXISTS request_photos (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  request_id  TEXT NOT NULL REFERENCES requests(id),
+  uploaded_by TEXT NOT NULL REFERENCES users(id),
+  filename    TEXT NOT NULL,
+  mime_type   TEXT NOT NULL CHECK (mime_type IN ('image/jpeg','image/png','image/webp')),
+  size_bytes  INTEGER NOT NULL CHECK (size_bytes > 0 AND size_bytes <= 5242880),
+  data        TEXT NOT NULL,
+  created_at  TEXT NOT NULL
+);
 `;
 
 db.exec(SCHEMA);
@@ -153,6 +170,7 @@ CREATE INDEX IF NOT EXISTS idx_comments_request     ON comments(request_id);
 CREATE INDEX IF NOT EXISTS idx_history_request      ON history(request_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user    ON notifications(user_id, read);
 CREATE INDEX IF NOT EXISTS idx_ratings_request       ON ratings(request_id);
+CREATE INDEX IF NOT EXISTS idx_request_photos_request ON request_photos(request_id);
 `;
 
 db.exec(INDEXES);
@@ -316,17 +334,17 @@ const crypto = require('node:crypto');
   ].forEach(([id, userId, skill]) => insertTechnician.run(id, userId, skill));
 
   const requests = [
-    ['REQ-1045', 'P1', 'Claremont Unit 3B', 'U1', 'plumbing', 'Kitchen sink leaking', 'Water is pooling under the kitchen sink and the cupboard base is becoming saturated. It has been leaking since yesterday morning.', 'high', 'in-progress', 'T1', '2026-08-08', '2026-08-14', 2],
-    ['REQ-1046', 'P1', 'Claremont Unit 1A', 'U1', 'plumbing', 'Leaking tap in bathroom', 'The hot water tap in the main bathroom drips continuously and will not fully close.', 'normal', 'submitted', null, '2026-08-12', '2026-08-12', 1],
-    ['REQ-1061', 'P6', 'Century City Unit 2A', 'U1', 'security', 'Pool pump making noise', 'The pool pump housing is vibrating loudly during operation and the access cover has come loose.', 'high', 'assigned', 'T4', '2026-08-10', '2026-08-14', 1],
+    ['REQ-1045', 'P1', 'Claremont Unit 3B', 'U1', 'plumbing', 'Kitchen sink leaking', 'Water is pooling under the kitchen sink and the cupboard base is becoming saturated. It has been leaking since yesterday morning.', 'high', 'in-progress', 'T1', '2026-08-08', '2026-08-14', 0],
+    ['REQ-1046', 'P1', 'Claremont Unit 1A', 'U1', 'plumbing', 'Leaking tap in bathroom', 'The hot water tap in the main bathroom drips continuously and will not fully close.', 'normal', 'submitted', null, '2026-08-12', '2026-08-12', 0],
+    ['REQ-1061', 'P6', 'Century City Unit 2A', 'U1', 'security', 'Pool pump making noise', 'The pool pump housing is vibrating loudly during operation and the access cover has come loose.', 'high', 'assigned', 'T4', '2026-08-10', '2026-08-14', 0],
     ['REQ-1076', 'P1', 'Claremont Unit 5A', 'U1', 'appliances', 'Oven not heating', 'The oven reaches temperature very slowly and then switches off mid-cycle.', 'normal', 'under-review', null, '2026-08-13', '2026-08-14', 0],
-    ['REQ-1032', 'P2', 'Rondebosch Unit 7', 'U4', 'electrical', 'No power in living room', 'Two sockets and the light fitting in the living room have no power after the storm.', 'urgent', 'in-progress', 'T2', '2026-08-06', '2026-08-13', 3],
-    ['REQ-1038', 'P4', 'Observatory Unit 12', 'U4', 'hvac', 'Air conditioner not cooling', 'The wall unit blows warm air even on the lowest temperature setting.', 'normal', 'on-hold', 'T3', '2026-08-07', '2026-08-12', 1],
-    ['REQ-1027', 'P3', 'Kenilworth Unit 4', 'U5', 'appliances', 'Dishwasher not draining', 'The dishwasher completes a cycle but leaves water standing in the bottom.', 'low', 'completed', 'T5', '2026-08-02', '2026-08-09', 2],
+    ['REQ-1032', 'P2', 'Rondebosch Unit 7', 'U4', 'electrical', 'No power in living room', 'Two sockets and the light fitting in the living room have no power after the storm.', 'urgent', 'in-progress', 'T2', '2026-08-06', '2026-08-13', 0],
+    ['REQ-1038', 'P4', 'Observatory Unit 12', 'U4', 'hvac', 'Air conditioner not cooling', 'The wall unit blows warm air even on the lowest temperature setting.', 'normal', 'on-hold', 'T3', '2026-08-07', '2026-08-12', 0],
+    ['REQ-1027', 'P3', 'Kenilworth Unit 4', 'U5', 'appliances', 'Dishwasher not draining', 'The dishwasher completes a cycle but leaves water standing in the bottom.', 'low', 'completed', 'T5', '2026-08-02', '2026-08-09', 0],
     ['REQ-1015', 'P5', 'Bellville Unit 9', 'U6', 'plumbing', 'Toilet running continuously', 'The cistern keeps refilling and never stops. Please inspect the inlet valve.', 'normal', 'completed', 'T1', '2026-07-28', '2026-08-04', 0],
-    ['REQ-1009', 'P8', 'Milnerton Unit 11', 'U7', 'security', 'Front gate lock sticking', 'The electronic gate opens but the manual lock is stiff and difficult to turn.', 'normal', 'closed', 'T4', '2026-07-20', '2026-07-29', 1],
+    ['REQ-1009', 'P8', 'Milnerton Unit 11', 'U7', 'security', 'Front gate lock sticking', 'The electronic gate opens but the manual lock is stiff and difficult to turn.', 'normal', 'closed', 'T4', '2026-07-20', '2026-07-29', 0],
     ['REQ-1019', 'P9', 'Newlands Unit 2', 'U8', 'electrical', 'Ceiling light flickering', 'The hallway light flickers constantly and occasionally goes dark for a few seconds.', 'low', 'closed', 'T2', '2026-07-22', '2026-07-30', 0],
-    ['REQ-1079', 'P7', 'Durbanville Unit 3', 'U6', 'hvac', 'Geyser not heating', 'No hot water for the last two days. The geyser thermostat may need replacement.', 'urgent', 'submitted', null, '2026-08-14', '2026-08-14', 1],
+    ['REQ-1079', 'P7', 'Durbanville Unit 3', 'U6', 'hvac', 'Geyser not heating', 'No hot water for the last two days. The geyser thermostat may need replacement.', 'urgent', 'submitted', null, '2026-08-14', '2026-08-14', 0],
     ['REQ-1078', 'P10', 'Mowbray Unit 6', 'U7', 'plumbing', 'Shower pressure very low', 'The shower has almost no pressure even with the tap fully open.', 'normal', 'under-review', null, '2026-08-13', '2026-08-14', 0],
   ];
 
@@ -567,6 +585,18 @@ requestAll: () => db.prepare(`
   updateRequestStatus: () => db.prepare('UPDATE requests SET status = ?, updated = ? WHERE id = ?'),
   updateRequestAssign: () => db.prepare('UPDATE requests SET tech_id = ?, urgency = ?, status = ?, updated = ? WHERE id = ?'),
   incrementPhotos: () => db.prepare('UPDATE requests SET photos = photos + 1, updated = ? WHERE id = ?'),
+  insertRequestPhoto: () => db.prepare(`
+    INSERT INTO request_photos (request_id, uploaded_by, filename, mime_type, size_bytes, data, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `),
+  photosForRequest: () => db.prepare(`
+    SELECT id, filename, mime_type, size_bytes, data, created_at
+    FROM request_photos WHERE request_id = ? ORDER BY created_at ASC
+  `),
+  photoById: () => db.prepare(`
+    SELECT id, request_id, filename, mime_type, size_bytes, data, created_at
+    FROM request_photos WHERE id = ?
+  `),
   commentsForRequest: () => db.prepare(`
     SELECT id, user_id, name, role_label, text, created_at FROM comments
     WHERE request_id = ? ORDER BY created_at ASC

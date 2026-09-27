@@ -103,6 +103,32 @@ const statusActionValidation = [
   handleValidationErrors,
 ];
 
+const PHOTO_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+const photoUploadValidation = [
+  param('id')
+    .matches(/^REQ-\d+$/)
+    .withMessage('Invalid request id'),
+  body('filename')
+    .optional({ values: 'falsy' })
+    .trim()
+    .isLength({ max: 120 })
+    .withMessage('Filename must not exceed 120 characters'),
+  body('mimeType')
+    .trim()
+    .isIn(PHOTO_MIME_TYPES)
+    .withMessage(`Photo type must be one of: ${PHOTO_MIME_TYPES.join(', ')}`),
+  body('data')
+    .notEmpty()
+    .withMessage('Photo data is required')
+    // A base64-encoded 5 MB file is roughly 6.7 MB of text - reject wildly
+    // oversized payloads here, before the (slower) decode-and-measure check
+    // in the service layer.
+    .isLength({ max: 8 * 1024 * 1024 })
+    .withMessage('Photo is too large'),
+  handleValidationErrors,
+];
+
 const requestIdParam = [
   param('id')
     .matches(/^REQ-\d+$/)
@@ -189,4 +215,5 @@ module.exports = {
   listRequestsValidation,
   registerUserValidation,
   updateProfileValidation,
+  photoUploadValidation,
 };

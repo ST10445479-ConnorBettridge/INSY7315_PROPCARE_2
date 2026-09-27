@@ -8,6 +8,7 @@ const {
   statusActionValidation,
   requestIdParam,
   listRequestsValidation,
+  photoUploadValidation,
 } = require('../middleware/validate');
 const { AppError } = require('../middleware/errorHandler');
 const service = require('../services/requests');
@@ -133,13 +134,20 @@ router.post('/:id/comments', commentValidation, (req, res, next) => {
   }
 });
 
-// POST /api/requests/:id/photos - attach a photo (count for the demo)
-router.post('/:id/photos', requestIdParam, (req, res, next) => {
+// POST /api/requests/:id/photos - upload and attach a real photo file
+// (JSON body: { filename, mimeType, data }, data is base64 or a data: URI).
+// This route gets its own larger body-size limit in src/app.js - the global
+// JSON cap (32 KB) is intentionally tight for every other endpoint.
+router.post('/:id/photos', photoUploadValidation, (req, res, next) => {
   try {
-    const request = service.addPhoto(req.user, req.params.id);
-    res.status(200).json({
+    const request = service.addPhoto(req.user, req.params.id, {
+      filename: req.body.filename,
+      mimeType: req.body.mimeType,
+      data: req.body.data,
+    });
+    res.status(201).json({
       status: 'success',
-      message: 'Photo attached',
+      message: 'Photo uploaded',
       data: { request },
     });
   } catch (err) {

@@ -87,14 +87,14 @@ Once it is live, every push to `main` is deployed by Render's own Git integratio
 
 ```bash
 npm ci
-npm test              # 110 unit and API tests
+npm test              # 129 unit and API tests
 npm run check         # syntax check every server and browser script
 npm audit             # dependency audit
 
-npm run test:browser  # 70-check end-to-end browser suite (drives a real Chromium)
+npm run test:browser  # headless Puppeteer walk-through of every screen/role (requires a local Chromium)
 ```
 
-The browser suite writes full-page screenshots and a summary to `browser-shots/` as evidence.
+The browser suite writes full-page screenshots and a summary to `browser-shots/` as evidence. It needs a Chromium binary and isn't part of `npm ci`/CI's dependency set (see `scripts/browser-test.js` header) — run it locally when you want that evidence.
 
 ## What PropCare does
 
@@ -111,11 +111,11 @@ The browser suite writes full-page screenshots and a summary to `browser-shots/`
 |-------|------------|
 | Runtime | Node.js ≥ 22.5 (uses built-in `node:sqlite`) |
 | Back end | Express, JWT auth (`jsonwebtoken`), `bcryptjs`, `helmet`, `cors` |
-| Input/security | `express-validator`, `express-rate-limit`, JSON body cap (32 KB) |
+| Input/security | `express-validator`, `express-rate-limit`, JSON body cap (32 KB; 8 MB on the photo-upload route only) |
 | Database | SQLite via `node:sqlite` (auto-created + seeded on first run) |
 | Logging | `winston`, `morgan` |
 | Front end | Vanilla JS SPA (`public/`) served by Express |
-| Tests | `jest` + `supertest` + `puppeteer` (110 automated tests) |
+| Tests | `jest` + `supertest` + `puppeteer` (129 automated Jest/API tests, plus a separate Puppeteer walk-through) |
 | CI/CD | GitHub Actions (3 workflows) + Render Blueprint |
 
 > `node:sqlite` is experimental in Node 22/23, so the app runs with `--experimental-sqlite`.
@@ -131,34 +131,40 @@ Supporting structure: routes → services (business rules) → repositories (dat
 
 ## Database design
 
-- **10 tables** with `PRAGMA foreign_keys = ON`: users, properties, categories, requests, request_photos, comments, status_history, notifications, ratings, technicians.
-- **Keys & integrity:** auto-increment primary keys, foreign keys on every relationship, `UNIQUE` constraints (e.g. one rating per user per request), and `CHECK` constraints on ratings and status values.
-- **Indexes:** **14 secondary indexes** covering every foreign key and every filter/sort column used by the API, declared immediately after the schema in `src/db.js`.
+- **12 tables** with `PRAGMA foreign_keys = ON`: `users`, `properties`, `units`, `categories`, `technicians`, `requests`, `request_photos`, `comments`, `history`, `notifications`, `ratings`, `settings`.
+- **Keys & integrity:** auto-increment/text primary keys, foreign keys on every relationship (including `request_photos.request_id` and `.uploaded_by`), `UNIQUE` constraints (e.g. one rating per user per request), and `CHECK` constraints on ratings, status values, and photo `mime_type`/`size_bytes`.
+- **Indexes:** **15 secondary indexes** covering every foreign key and every filter/sort column used by the API, declared immediately after the schema in `src/db.js`.
 - **Efficient queries:** prepared statements reused across requests; aggregate report queries instead of loading rows into application memory.
+- **Photo storage:** `request_photos` stores each uploaded image as base64 text in SQLite rather than on disk. Render's Free plan gives the app no persistent disk either way (see [Deployment](#deployment-and-hosting-rationale)), so this keeps storage consistent with the rest of the (already ephemeral) database instead of adding a second, differently-ephemeral place to lose files on restart.
 
 ## Security
 
 - Passwords hashed with **bcrypt** (cost 12); plaintext is never stored or logged.
 - **JWT** access tokens carry `sub`, `role`, `tenant_id` and an `aud` claim, which is verified on every request; deactivated users cannot continue to use issued tokens.
 - **Authentication vs authorisation are separate:** route middleware establishes identity, then role and object-level checks enforce tenancy scoping.
-- **Input validation** on every write route with `express-validator`, plus a 32 KB JSON body cap.
+- **Input validation** on every write route with `express-validator`, including server-side MIME-type and size checks on photo uploads (JPEG/PNG/WebP only, 5 MB decoded limit).
+- **Body-size limits:** a 32 KB JSON cap on every route except `POST /api/requests/:id/photos`, which gets its own 8 MB cap (a base64-encoded photo is ~33% larger than the file) - see `src/app.js`. No other route can submit an oversized body.
 - **Rate limiting** on authentication and write endpoints (429 on abuse).
 - **Helmet** security headers, **CORS allow-listing**, and a consistent JSON error envelope with correct status codes (400/401/403/404/409/429).
 - The seed log never prints `DEMO_PASSWORD`. A `JWT_SECRET` shorter than 32 characters is rejected outright; if none is set at all, a random one is generated per process (see [Deployment](#deployment-and-hosting-rationale)) so no secret has to be supplied.
 
 ## API
 
-RESTful JSON under `/api`. Correct HTTP methods and status codes throughout.
+RESTful JSON under `/api`. Correct HTTP methods and status codes throughout. This table lists every real route in `src/routes/` - nothing here is aspirational.
 
-| Area | Example endpoints |
+| Area | Real endpoints |
 |---|---|
-| Auth | `POST /api/auth/login`, `POST /api/auth/register` |
-| Requests | `GET/POST /api/requests`, `GET/PATCH /api/requests/:id` |
-| Lifecycle | `POST /api/requests/:id/assign`, `/accept`, `/status`, `/complete` |
-| Comments / photos / ratings | `POST /api/requests/:id/comments`, `/photos`, `/ratings` |
-| Notifications | `GET /api/notifications`, `POST /api/notifications/:id/read` |
-| Admin | `GET/POST/PATCH /api/users`, `/api/categories`, `/api/reports` |
+| Auth | `POST /api/auth/login`, `GET /api/auth/me`, `POST /api/auth/logout` |
+| Users | `GET/POST /api/users` (admin), `GET/PUT /api/users/me`, `PUT /api/users/:id/status` (admin) - account creation is admin-gated; there is no public self-registration route |
+| Requests | `GET/POST /api/requests`, `GET /api/requests/:id` |
+| Lifecycle | `POST /api/requests/:id/status` (action-based: cancel/confirm/reopen/approve/accept/reject/hold/resume/complete), `POST /api/requests/:id/assign` |
+| Comments / photos / rating | `POST /api/requests/:id/comments`, `POST /api/requests/:id/photos`, `POST /api/requests/:id/rate` |
+| Properties / technicians / categories | `GET /api/properties`, `GET /api/properties/:id`, `GET /api/technicians` (manager/admin), `GET /api/categories`, `GET /api/categories/:id`, `GET /api/statuses`, `GET /api/urgencies` |
+| Notifications | `GET /api/notifications`, `POST /api/notifications/read-all` (there is no per-notification read route) |
+| Admin | `GET/PUT /api/settings` (admin), `GET /api/reports/summary` |
 | Health | `GET /api/health` |
+
+There is no `PATCH` route anywhere in the API - request updates go through the action-specific routes above (`/status`, `/assign`, `/rate`), not a generic `PATCH /api/requests/:id`.
 
 Responses use `{ status: 'success', data }` on success, `{ status: 'success', message }` for action-only replies such as logout, and `{ status: 'error', statusCode, message }` on failure. The HTTP status code is always the source of truth; `status` mirrors it for client convenience.
 
@@ -198,8 +204,8 @@ npm run test:browser  # headless Puppeteer walk-through of every screen/button p
 
 | Suite | Scope | Result |
 | --- | --- | --- |
-| `npm test` | 6 Jest + supertest suites (auth, lifecycle, RBAC, reports, patterns, secret) | **110 / 110 pass** |
-| `npm run test:browser` | Headless walk-through of every screen, button and function for all 4 roles + mobile + accessibility | pass |
+| `npm test` | 7 Jest + supertest suites (auth, requests/lifecycle/comments/photos/rating, RBAC, reports, regressions, patterns, secret) | **129 / 129 pass** |
+| `npm run test:browser` | Headless walk-through of every screen, button and function for all 4 roles + mobile + accessibility | requires a local Chromium; not re-run in every environment (see note above) |
 | `npm run check` | `node --check` syntax gate | pass |
 | GitHub Actions | `CI - Lint, Build and Test` on `main` and `develop` | green |
 
@@ -209,7 +215,7 @@ The suites cover authentication, RBAC (role **and** object-level), the request l
 
 | Suite | Scope | Result |
 | --- | --- | --- |
-| `npm test` | 6 Jest + supertest API suites | **110 / 110 pass** |
+| `npm test` | 7 Jest + supertest API suites | **129 / 129 pass** |
 | `npm run check` | `node --check` syntax gate | pass |
 | GitHub Actions | `CI - Lint, Build and Test` | green |
 | GitHub Actions | `Build, Test and Deploy` | green |
@@ -297,11 +303,11 @@ Overview dashboard (stats per role), requests list with search/filters, request 
 | User story / non-functional requirement | Where it is delivered |
 |---|---|
 | Tenant reports an issue with photo, category and urgency | `POST /api/requests` + `POST /api/requests/:id/photos`; report-issue wizard |
-| Manager reviews and prioritises requests | `GET /api/requests`, `PATCH /api/requests/:id` (priority) |
+| Manager reviews and prioritises requests | `GET /api/requests` (filter/search); urgency is set on submission and can be revised via `POST /api/requests/:id/assign` |
 | Manager assigns a technician | `POST /api/requests/:id/assign`; `ManagerActivityObserver` notified |
-| Technician accepts, updates and completes work | `/accept`, `/status`, `/complete` endpoints + status history |
+| Technician accepts, updates and completes work | `POST /api/requests/:id/status` (`accept`/`hold`/`resume`/`complete` actions) + status history |
 | Both parties converse on a request | `POST /api/requests/:id/comments` |
-| Tenant confirms and rates completed work | `POST /api/requests/:id/ratings` (one per user, `CHECK` on score) |
+| Tenant confirms and rates completed work | `POST /api/requests/:id/rate` (one per user, `CHECK` on score 1-5) |
 | Admin manages users, roles and categories | `/api/users`, `/api/categories` with role guards |
 | Manager views reports and exports CSV | `/api/reports` + client-side CSV export |
 | Users are notified of relevant changes | `NotificationSubject` → observers → `/api/notifications` |
@@ -313,7 +319,7 @@ Overview dashboard (stats per role), requests list with search/filters, request 
 
 ## Design notes
 
-- Brand colours: navy `#172336`, teal `#a7cfce`, page background `#f2f4f8`.
+- Brand colours: navy `#101d31`, teal `#2fc4ac`, page background `#f4f6f8` (see `public/css/styles.css`).
 - No CSS or JavaScript framework, no build step and no web fonts to download, which keeps first paint fast.
 - `data/*.db` and `.env` are git-ignored; the database is rebuilt and seeded automatically when missing.
 
@@ -343,7 +349,7 @@ puppeteer (dev, direct)
 | `@puppeteer/browsers` | ≤ 2.13.2 | high | 25.12.0 |
 | `extract-zip` | * | high | 25.12.0 |
 
-**Why it was a deliberate major bump:** the remediating version sat outside the previous `^24.20.0` range, and `npm audit fix --force` resolved the advisories by *downgrading* Puppeteer to 19.8.0, which would have broken the browser suite. The upgrade was made explicitly and then validated with the full 70-check browser suite and 110-check unit/API suite rather than applied as an untested automated change.
+**Why it was a deliberate major bump:** the remediating version sat outside the previous `^24.20.0` range, and `npm audit fix --force` resolved the advisories by *downgrading* Puppeteer to 19.8.0, which would have broken the browser suite. The upgrade was made explicitly and validated against the unit/API suite (129/129) at the time; re-validating the full browser suite requires a local Chromium and is not part of `npm ci`/CI (see [Tests](#tests)).
 
 ### Credential logging
 
