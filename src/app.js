@@ -137,6 +137,16 @@ app.use(
   })
 );
 
+// Also expose the prototype UI folder so we can use it as the main SPA
+app.use(
+  express.static(path.join(__dirname, '..', 'prototype'), {
+    maxAge: isTest ? 0 : '1h',
+    setHeaders: (res) => {
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+    },
+  })
+);
+
 // API health + welcome
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'success', message: 'PropCare API is running' });
@@ -185,7 +195,8 @@ app.use('/api', settingsRoutes); // workspace settings (admin only)
 
 // SPA fallback - serve index.html for non-API routes.
 app.get(/^\/(?!api\/).*/, (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
+  // Serve the prototype home screen as the SPA entrypoint
+  res.sendFile(path.join(__dirname, '..', 'prototype', 'index.html'));
 });
 
 app.use(notFoundHandler);

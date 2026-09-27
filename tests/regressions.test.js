@@ -136,7 +136,7 @@ describe('Regression - settings API', () => {
       .set(auth(token));
 
     expect(res.status).toBe(200);
-    expect(res.body.data.settings.orgName).toBe('Horizon Property Group');
+    expect(res.body.data.settings.orgName).toBe('Obs Realty Group');
     expect(res.body.data.settings.notifyChannel).toBe('In-app push + email');
   });
 

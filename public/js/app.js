@@ -225,7 +225,7 @@
   }
 
   // Displayed in the breadcrumb; refreshed whenever the admin saves settings.
-  var orgName = 'Horizon Property Group';
+  var orgName = 'Obs Realty Group';
 
   function renderShell() {
     var user = state.user;

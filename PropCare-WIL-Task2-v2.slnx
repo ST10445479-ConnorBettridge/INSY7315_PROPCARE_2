@@ -1,0 +1,6 @@
+﻿<Solution>
+  <StartupProject Path="vs/PropcareLauncher/PropcareLauncher.csproj" />
+  <Folder Name="/vs/">
+    <Project Path="vs/PropcareLauncher/PropcareLauncher.csproj" />
+  </Folder>
+</Solution>

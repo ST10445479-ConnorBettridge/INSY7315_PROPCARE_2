@@ -14,7 +14,7 @@ const SETTING_KEYS = {
 };
 
 const SETTING_DEFAULTS = {
-  orgName: 'Horizon Property Group',
+  orgName: 'Obs Realty Group',
   notifyChannel: 'In-app push + email',
 };
 

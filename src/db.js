@@ -383,7 +383,7 @@ const crypto = require('node:crypto');
 
   insertRating.run('REQ-1027', 'U5', 5, '2026-08-10 11:00');
 
-  insertSetting.run('org_name', 'Horizon Property Group');
+  insertSetting.run('org_name', 'Obs Realty Group');
   insertSetting.run('notify_channel', 'In-app push + email');
 
   console.log(
