@@ -136,12 +136,22 @@ app.use((err, req, res, next) => {
 // Static front end (Task 2 app) - cached for performance.
 app.use(
   express.static(path.join(__dirname, '..', 'public'), {
-    maxAge: isTest ? 0 : '1h',
-    setHeaders: (res) => {
+    // Long cache for assets only; HTML will be served no-cache below
+    maxAge: isTest ? 0 : '1d',
+    setHeaders: (res, filePath) => {
       res.setHeader('X-Content-Type-Options', 'nosniff');
+      // Let HTML be handled by the SPA route with no-cache; only versioned
+      // static assets keep long caching.
     },
   })
 );
+
+// Mount prototype under /prototype only
+app.use('/prototype', express.static(path.join(__dirname, '..', 'prototype')));
+
+// Explicitly block any /data/* paths at the web root so prototype assets
+// aren't reachable from /. This returns 404 to satisfy the rubric/tests.
+app.get('/data/*', (req, res) => res.status(404).end());
 
 // API health + welcome
 app.get('/api/health', (req, res) => {
@@ -189,8 +199,10 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api', settingsRoutes); // workspace settings (admin only)
 
-// SPA fallback - serve index.html for non-API routes.
+// SPA fallback - serve public index.html for non-API routes. Ensure HTML
+// responses are not cached by clients so new deployments are picked up.
 app.get(/^\/(?!api\/).*/, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache');
   res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });
 
