@@ -200,7 +200,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api', settingsRoutes); // workspace settings (admin only)
 
 // SPA fallback - serve public index.html for non-API routes. Ensure HTML
-// responses are not cached by clients so new deployments are picked up.
+// responses are not cached by clients so that new deployments are picked up.
 app.get(/^\/(?!api\/).*/, (req, res) => {
   res.setHeader('Cache-Control', 'no-cache');
   res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
