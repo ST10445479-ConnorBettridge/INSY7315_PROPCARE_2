@@ -20,6 +20,12 @@ const settingsRoutes = require('./routes/settings');
 
 const app = express();
 
+// When running behind a proxy (Render), ensure the app trusts the proxy so
+// rate limiting and logging see the real client IP address.
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
 const isTest = process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID !== undefined;
 const allowedOrigins = (process.env.CORS_ORIGINS || '')
   .split(',')
