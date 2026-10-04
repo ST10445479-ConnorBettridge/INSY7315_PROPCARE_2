@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("PropcareLauncher")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+934ebe9a08b710180cfa66db1357fd37fd86909f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+23c9be1f5436a63ff077ab348feeb9e409be3ffd")]
 [assembly: System.Reflection.AssemblyProductAttribute("PropcareLauncher")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PropcareLauncher")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

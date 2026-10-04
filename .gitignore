@@ -27,3 +27,10 @@ Thumbs.db
 coverage/
 .playwright-mcp/
 browser-shots/
+
+# Visual Studio / .NET
+.vs/
+bin/
+obj/
+*.user
+*.suo

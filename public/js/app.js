@@ -1605,51 +1605,54 @@
   };
 
   function wireLogin() {
-    // New signin form wiring: handle submit so Enter works from any field.
-    var roleSel = document.getElementById('demo-account') || document.getElementById('loginRole');
-    var emailEl = document.getElementById('email') || document.getElementById('loginEmail');
-    var pwdEl = document.getElementById('password') || document.getElementById('loginPassword');
-    var form = document.getElementById('signin-form') || document.getElementById('signinForm');
+    // Canonical wiring using new ids only
+    var roleSel = document.getElementById('loginRole');
+    var emailEl = document.getElementById('loginEmail');
+    var pwdEl = document.getElementById('loginPassword');
+    var form = document.getElementById('loginForm');
+    var errBox = document.getElementById('loginError');
 
-    function setErr(msg) {
-      var box = document.getElementById('form-message') || document.getElementById('loginError');
-      box.textContent = msg;
-      box.classList.toggle('error', !!msg);
-    }
+    function clearError() { if (errBox) { errBox.textContent = ''; errBox.classList.add('hidden'); } }
 
     if (roleSel) {
       roleSel.addEventListener('change', function () {
-        var v = roleSel.value;
-        if (v && EMAILS[v]) {
-          if (emailEl) emailEl.value = v;
-          if (pwdEl) pwdEl.value = '';
-        }
-        setErr('');
+        var v = roleSel.value || '';
+        if (emailEl) emailEl.value = v;
+        if (pwdEl) pwdEl.value = '';
+        clearError();
       });
     }
+
+    if (emailEl) emailEl.addEventListener('input', clearError);
+    if (pwdEl) pwdEl.addEventListener('input', clearError);
 
     if (form) {
       form.addEventListener('submit', function (ev) {
         ev.preventDefault();
-        // Hide bottom nav while on login
-        var bn = document.getElementById('bottomNav'); if (bn) bn.style.display = 'none';
         doLogin();
       });
     }
 
-    var forgot = document.getElementById('forgot-password') || document.getElementById('forgotBtn');
-    if (forgot) forgot.addEventListener('click', function () { toast('Password recovery is disabled in demo mode.'); });
+    var forgot = document.getElementById('forgotBtn');
+    if (forgot) forgot.addEventListener('click', function () { toast('Ask an administrator to reset your password.'); });
   }
 
   async function doLogin() {
     var btn = document.getElementById('loginBtn');
-    var email = document.getElementById('loginEmail').value.trim();
-    var password = document.getElementById('loginPassword').value;
+    var emailEl = document.getElementById('loginEmail');
+    var pwdEl = document.getElementById('loginPassword');
+    var email = emailEl ? emailEl.value.trim() : '';
+    var password = pwdEl ? pwdEl.value : '';
     var errBox = document.getElementById('loginError');
-    errBox.classList.add('hidden');
-    if (!email || !password) {
-      errBox.textContent = 'Enter your email and password.';
-      errBox.classList.remove('hidden');
+    if (errBox) { errBox.classList.add('hidden'); }
+    if (!email) {
+      if (errBox) { errBox.textContent = 'Enter your email.'; errBox.classList.remove('hidden'); }
+      if (emailEl) emailEl.focus();
+      return;
+    }
+    if (!password) {
+      if (errBox) { errBox.textContent = 'Enter your password.'; errBox.classList.remove('hidden'); }
+      if (pwdEl) pwdEl.focus();
       return;
     }
     btn.disabled = true;
@@ -1660,8 +1663,7 @@
       setUser(res.data.user);
       toast('Welcome back, ' + res.data.user.name.split(' ')[0] + '!');
     } catch (e) {
-      errBox.textContent = e.message || 'Sign in failed. Please try again.';
-      errBox.classList.remove('hidden');
+      if (errBox) { errBox.textContent = e.message || 'Sign in failed. Please try again.'; errBox.classList.remove('hidden'); }
     } finally {
       btn.disabled = false;
       document.querySelector('#loginBtn .btn-label').textContent = 'Sign in to PropCare';

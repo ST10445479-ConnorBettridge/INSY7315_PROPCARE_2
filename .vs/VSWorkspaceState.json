@@ -6,9 +6,7 @@
     "\\scripts",
     "\\src",
     "\\tests",
-    "\\vs",
-    "\\vs\\PropcareLauncher"
+    "\\vs"
   ],
-  "SelectedNode": "\\PropCare-WIL-Task2-v2.slnx",
   "PreviewInSolutionExplorer": false
 }
