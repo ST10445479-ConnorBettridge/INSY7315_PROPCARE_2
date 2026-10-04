@@ -40,8 +40,16 @@ router.post('/login', loginValidation, async (req, res, next) => {
     const { email, password } = req.body;
     const userRow = q.userByEmail().get(email);
 
+    // Check for lockout first
+    const attempt = q.getLoginAttempt().get(email) || { attempts: 0, locked_until: null };
+    if (attempt.locked_until && new Date(attempt.locked_until) > new Date()) {
+      return next(new AppError('Too many failed login attempts. Try again later.', 429));
+    }
+
     if (!userRow) {
       await bcrypt.compare(password, await bcrypt.hash('propcare-dummy-token', 10));
+      // Record failed attempt for unknown email too to slow enumeration.
+      try { q.incrementLoginAttempt().run(email); } catch (e) { /* ignore */ }
       return next(new AppError('Invalid email or password', 401));
     }
 
@@ -51,6 +59,21 @@ router.post('/login', loginValidation, async (req, res, next) => {
 
     const isMatch = await bcrypt.compare(password, userRow.password_hash);
     if (!isMatch) {
+      // Record a failed attempt and possibly lock the account when attempts
+      // exceed 5 in succession.
+      try {
+        q.incrementLoginAttempt().run(userRow.email);
+        const att = q.getLoginAttempt().get(userRow.email);
+        if (att && att.attempts >= 5) {
+          // Lock for 15 minutes
+          const until = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+          q.resetLoginAttempt().run(userRow.email);
+          // Recreate with locked_until using prepared statement
+          try {
+            q.setLoginLock().run(userRow.email, 0, until);
+          } catch (e) { /* ignore */ }
+        }
+      } catch (e) { /* ignore */ }
       return next(new AppError('Invalid email or password', 401));
     }
 
@@ -62,6 +85,8 @@ router.post('/login', loginValidation, async (req, res, next) => {
       active: userRow.active,
       createdAt: userRow.created_at,
     };
+    // Successful login: reset attempts for the email.
+    try { q.resetLoginAttempt().run(userRow.email); } catch (e) { /* ignore */ }
     const token = generateToken(safeUser);
 
     logger.info('User logged in', { userId: userRow.id, email: userRow.email });

@@ -96,7 +96,7 @@ const statusActionValidation = [
     .isIn(['cancel', 'confirm', 'reopen', 'approve', 'accept', 'reject', 'hold', 'resume', 'complete'])
     .withMessage('Invalid status action'),
   body('text')
-    .optional({ values: 'falsy' })
+    .optional({ values: "falsy" })
     .trim()
     .isLength({ max: 1000 })
     .withMessage('Note must not exceed 1000 characters'),

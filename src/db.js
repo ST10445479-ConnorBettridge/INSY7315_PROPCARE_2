@@ -127,6 +127,13 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT NOT NULL
 );
 
+-- Track recent failed login attempts for per-account lockout.
+CREATE TABLE IF NOT EXISTS login_attempts (
+  email       TEXT PRIMARY KEY,
+  attempts    INTEGER NOT NULL DEFAULT 0,
+  locked_until TEXT
+);
+
 -- Real uploaded photo files (base64-encoded), replacing the old bare counter.
 -- Stored in SQLite rather than on disk because Render's Free plan gives the
 -- app no persistent disk either way (see README) - the database is already
@@ -171,6 +178,7 @@ CREATE INDEX IF NOT EXISTS idx_history_request      ON history(request_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user    ON notifications(user_id, read);
 CREATE INDEX IF NOT EXISTS idx_ratings_request       ON ratings(request_id);
 CREATE INDEX IF NOT EXISTS idx_request_photos_request ON request_photos(request_id);
+CREATE INDEX IF NOT EXISTS idx_login_attempts_email ON login_attempts(email);
 `;
 
 db.exec(INDEXES);
@@ -481,6 +489,24 @@ const q = {
   `),
   userByEmail: () => db.prepare(`
     SELECT * FROM users WHERE email = ?
+  `),
+  incrementLoginAttempt: () => db.prepare(`
+    INSERT INTO login_attempts(email, attempts, locked_until)
+    VALUES(?, 1, NULL)
+    ON CONFLICT(email) DO UPDATE SET attempts = attempts + 1
+  `),
+  resetLoginAttempt: () => db.prepare(`
+    DELETE FROM login_attempts WHERE email = ?
+  `),
+  getLoginAttempt: () => db.prepare(`
+    SELECT attempts, locked_until FROM login_attempts WHERE email = ?
+  `),
+  setLoginLock: () => db.prepare(`
+    INSERT INTO login_attempts(email, attempts, locked_until)
+    VALUES(?, ?, ?)
+    ON CONFLICT(email) DO UPDATE SET
+      attempts = excluded.attempts,
+      locked_until = excluded.locked_until
   `),
   allUsers: () => db.prepare(`
     SELECT id, name, email, role, active, created_at FROM users ORDER BY name
