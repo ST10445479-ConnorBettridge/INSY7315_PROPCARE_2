@@ -1605,28 +1605,40 @@
   };
 
   function wireLogin() {
-    var roleSel = document.getElementById('loginRole');
-    var email = document.getElementById('loginEmail');
-    var setErr = function (msg) {
-      var box = document.getElementById('loginError');
+    // New signin form wiring: handle submit so Enter works from any field.
+    var roleSel = document.getElementById('demo-account') || document.getElementById('loginRole');
+    var emailEl = document.getElementById('email') || document.getElementById('loginEmail');
+    var pwdEl = document.getElementById('password') || document.getElementById('loginPassword');
+    var form = document.getElementById('signin-form') || document.getElementById('signinForm');
+
+    function setErr(msg) {
+      var box = document.getElementById('form-message') || document.getElementById('loginError');
       box.textContent = msg;
-      box.classList.toggle('hidden', !msg);
-    };
-    roleSel.addEventListener('change', function () {
-      if (EMAILS[roleSel.value]) {
-        email.value = roleSel.value;
-        // The demo password comes from DEMO_PASSWORD on the server, so the
-        // client cannot know it. Clear the field rather than asserting a
-        // value that may not be the real one.
-        document.getElementById('loginPassword').value = '';
-      }
-      setErr('');
-    });
-    document.getElementById('loginBtn').addEventListener('click', doLogin);
-    document.getElementById('loginPassword').addEventListener('keydown', function (e) { if (e.key === 'Enter') doLogin(); });
-    document.getElementById('forgotBtn').addEventListener('click', function () {
-      toast('Ask an administrator to reset your password.');
-    });
+      box.classList.toggle('error', !!msg);
+    }
+
+    if (roleSel) {
+      roleSel.addEventListener('change', function () {
+        var v = roleSel.value;
+        if (v && EMAILS[v]) {
+          if (emailEl) emailEl.value = v;
+          if (pwdEl) pwdEl.value = '';
+        }
+        setErr('');
+      });
+    }
+
+    if (form) {
+      form.addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        // Hide bottom nav while on login
+        var bn = document.getElementById('bottomNav'); if (bn) bn.style.display = 'none';
+        doLogin();
+      });
+    }
+
+    var forgot = document.getElementById('forgot-password') || document.getElementById('forgotBtn');
+    if (forgot) forgot.addEventListener('click', function () { toast('Password recovery is disabled in demo mode.'); });
   }
 
   async function doLogin() {

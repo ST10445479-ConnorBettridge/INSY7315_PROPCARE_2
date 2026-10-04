@@ -7,58 +7,74 @@
   <title>PropCare — Smart Property Maintenance Management</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏠</text></svg>">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css?v=1.0.0">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect rx='18' width='100' height='100' fill='%23101b2b'/%3E%3Ctext x='50' y='68' font-size='68' text-anchor='middle' fill='%23a9e7d2' font-family='Manrope'%3EP%3C/text%3E%3C/svg%3E">
 </head>
 <body>
   <a href="#main" class="skip-link">Skip to main content</a>
 
   <!-- ============ LOGIN SCREEN ============ -->
-  <div id="loginScreen" class="login-screen hidden">
-    <div class="login-left">
-      <div class="brand brand-lg">
-        <span class="brand-logo" aria-hidden="true">&#128737;</span>
-        <span class="brand-name">PropCare</span>
+  <!-- LANDING / SIGN-IN -->
+  <main id="loginScreen" class="login-shell hidden">
+    <section class="brand-panel" aria-label="PropCare introduction">
+      <div class="brand-orbit" aria-hidden="true"></div>
+      <div class="brand-inner">
+        <a class="brand-mark" href="#" aria-label="PropCare home">
+          <span class="brand-icon">P</span>
+          <span class="brand-name-wrap">
+            <strong>PropCare</strong>
+            <small>OBS REALTY GROUP</small>
+          </span>
+        </a>
+
+        <div class="brand-copy">
+          <p class="eyebrow">A BETTER MAINTENANCE RHYTHM</p>
+          <h1>Nothing lost<br>between the<br><span>next call.</span></h1>
+          <p class="brand-description">PropCare brings residents, property teams, and technicians into one calm, auditable workflow.</p>
+          <div class="brand-tags" aria-label="Product benefits"><span>Clear ownership</span><span>Visible progress</span></div>
+        </div>
       </div>
-      <p class="login-headline">A better maintenance rhythm.</p>
-      <p class="login-sub">Nothing lost between the next call. PropCare brings residents, property teams and technicians into one calm, auditable workflow.</p>
-      <ul class="login-points">
-        <li>Report issues in under a minute, with photos</li>
-        <li>Track every request from report to resolution</li>
-        <li>One auditable history for the whole portfolio</li>
-      </ul>
-    </div>
-    <div class="login-right">
-      <div class="login-card">
-        <div class="login-portal">OBS REALTY TEAM PORTAL</div>
-        <h1>Welcome back</h1>
-        <p class="login-card-sub">Sign in to continue to your workspace.</p>
+    </section>
 
-        <label class="field-label" for="loginRole">Demo account</label>
-        <select id="loginRole" class="field">
-          <option value="sarahwilliams@example.com" selected>Sarah Williams — Tenant</option>
-          <option value="michael.jacobs@obsrealty.co.za">Michael Jacobs — Property Manager</option>
-          <option value="johan.vdm@obsrealty.co.za">Johan van der Merwe — Technician</option>
-          <option value="admin@obsrealty.co.za">System Admin — Administrator</option>
-        </select>
+    <section class="signin-panel" aria-labelledby="welcome-heading">
+      <div class="signin-wrap">
+        <header>
+          <p class="portal-label">HORIZON TEAM PORTAL</p>
+          <h2 id="welcome-heading">Welcome back</h2>
+          <p class="signin-intro">Sign in to continue to your workspace.</p>
+        </header>
 
-        <label class="field-label" for="loginEmail">Work email</label>
-        <input class="field" id="loginEmail" type="email" autocomplete="username" value="sarahwilliams@example.com">
+        <form id="signin-form">
+          <div class="account-field">
+            <label for="demo-account">DEMO ACCOUNT</label>
+            <select id="demo-account" name="account">
+              <option value="sarah">Sarah Williams · Tenant</option>
+              <option value="james">James Carter · Property manager</option>
+              <option value="amina">Amina Patel · Technician</option>
+            </select>
+          </div>
 
-        <label class="field-label" for="loginPassword">Password</label>
-        <input class="field" id="loginPassword" type="password" autocomplete="current-password" placeholder="Your password">
+          <div class="form-field">
+            <label for="email">Work email (optional in demo)</label>
+            <input id="email" name="email" type="email" placeholder="sarah.williams@example.com" autocomplete="email">
+          </div>
 
-        <div id="loginError" class="form-error hidden" role="alert"></div>
+          <div class="form-field">
+            <label for="password">Password</label>
+            <input id="password" name="password" type="password" placeholder="Any password in demo mode" autocomplete="current-password">
+          </div>
 
-        <button type="button" id="loginBtn" class="btn btn-accent btn-block">
-          <span class="btn-label">Sign in to PropCare</span>
-        </button>
-        <button type="button" id="forgotBtn" class="btn-link">Forgot your password?</button>
-        <p class="login-demo-note">Demo environment — sign in with any account above</p>
+          <button class="signin-button" type="submit"><span>Sign in to PropCare</span><span class="arrow" aria-hidden="true">→</span></button>
+          <button class="forgot-button" id="forgot-password" type="button">Forgot your password?</button>
+
+          <p class="form-message" id="form-message" aria-live="polite" role="status"></p>
+        </form>
+
+        <p class="demo-note">Demo environment · no external services connected</p>
       </div>
-    </div>
-  </div>
+    </section>
+  </main>
 
   <!-- ============ APP SHELL ============ -->
   <div id="app" class="hidden app-shell">
