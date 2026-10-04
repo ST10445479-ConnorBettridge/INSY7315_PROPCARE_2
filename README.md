@@ -71,6 +71,24 @@ PORT=3000 npm start
 DB_PATH=:memory: npm start
 ```
 
+## Secrets and persistence (important)
+
+- JWT_SECRET: For stable user sessions that survive restarts you must set a
+  JWT_SECRET environment variable in your Render service dashboard (or in
+  your local .env). Do NOT commit secrets to the repository. The server will
+  otherwise generate a strong random secret at boot which is fine for the
+  demo but causes all sessions to be invalidated on each restart.
+
+- Data persistence: the default storage is SQLite in the `data/` folder. On
+  Render's Free plan the service may be stopped and restarted (cold start),
+  and the deployment model in this repository treats the database as
+  ephemeral: the seed dataset is re-applied on cold start so the app is
+  always populated with demo data. If you need durable production-grade
+  storage, provision a managed Postgres instance and adapt the repository
+  layer to point at it; that is intentionally left as an operator task and
+  is not wired into the default demo deploy (to keep the blueprint simple
+  and safe for the Free plan).
+
 ### Option C — deploy your own copy to Render (Free)
 
 1. Sign in at [dashboard.render.com](https://dashboard.render.com) using **GitHub**, so Render is authorized to read your repositories.
