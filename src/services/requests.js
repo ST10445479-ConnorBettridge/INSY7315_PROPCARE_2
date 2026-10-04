@@ -324,6 +324,19 @@ function decodePhotoPayload(mimeType, base64Data) {
       413
     );
   }
+  // Verify magic bytes (file signature) to avoid spoofed MIME types.
+  const isJpeg = buffer.length >= 3 && buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF;
+  const isPng = buffer.length >= 8 && buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47 && buffer[4] === 0x0D && buffer[5] === 0x0A && buffer[6] === 0x1A && buffer[7] === 0x0A;
+  const isWebp = buffer.length >= 12 && buffer.slice(0,4).toString() === 'RIFF' && buffer.slice(8,12).toString() === 'WEBP';
+  if (mimeType === 'image/jpeg' && !isJpeg) {
+    throw new AppError('Uploaded data does not match declared JPEG mime type.', 400);
+  }
+  if (mimeType === 'image/png' && !isPng) {
+    throw new AppError('Uploaded data does not match declared PNG mime type.', 400);
+  }
+  if (mimeType === 'image/webp' && !isWebp) {
+    throw new AppError('Uploaded data does not match declared WEBP mime type.', 400);
+  }
   return { buffer, cleaned };
 }
 
@@ -334,6 +347,11 @@ function addPhoto(user, id, photo) {
   }
   if (!canView(user, row)) {
     throw new AppError('You do not have permission to update this request.', 403);
+  }
+  // Enforce a maximum of 5 photos per request.
+  const existing = requestRepository.findPhotos(id) || [];
+  if (existing.length >= 5) {
+    throw new AppError('A request may have a maximum of 5 photos.', 400);
   }
   const filename = (photo && typeof photo.filename === 'string' && photo.filename.trim())
     || 'photo.jpg';
