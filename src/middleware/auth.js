@@ -25,9 +25,10 @@ const authenticate = (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET, JWT_VERIFY_OPTIONS);
 
     // A signed JWT can outlive the account it was issued for (deactivation,
-    // deletion). Re-check the live account state on every request so a
-    // deactivated user's existing token stops granting access immediately.
-    const account = q.userActiveFlag().get(decoded.id);
+    // deletion). Re-check the live account row on every request so a
+    // deactivated user's existing token stops granting access immediately and
+    // so role changes take effect without waiting for token expiry.
+    const account = q.userByIdFull().get(decoded.id);
     if (!account) {
       return next(new AppError('User account no longer exists.', 403));
     }
@@ -35,7 +36,13 @@ const authenticate = (req, res, next) => {
       return next(new AppError('This account has been deactivated. Contact an administrator.', 403));
     }
 
-    req.user = decoded;
+    // Use the live database values for role and name but preserve the id.
+    req.user = {
+      id: account.id,
+      email: account.email,
+      role: account.role,
+      name: account.name,
+    };
     next();
   } catch (err) {
     logger.warn('Invalid JWT token attempt', {

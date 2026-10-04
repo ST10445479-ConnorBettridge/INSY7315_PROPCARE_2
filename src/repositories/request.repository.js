@@ -65,8 +65,17 @@ class RequestRepository extends BaseRepository {
     return q.updateRequestAssign().run(technicianId, urgency, status, updated, id);
   }
 
-  addPhoto(id, updated) {
-    return q.incrementPhotos().run(updated, id);
+  addPhoto({ requestId, uploadedBy, filename, mimeType, sizeBytes, data, when }) {
+    q.insertRequestPhoto().run(requestId, uploadedBy, filename, mimeType, sizeBytes, data, when);
+    return q.incrementPhotos().run(when, requestId);
+  }
+
+  findPhotos(requestId) {
+    return q.photosForRequest().all(requestId);
+  }
+
+  findPhotoById(photoId) {
+    return q.photoById().get(photoId);
   }
 
   addHistory(requestId, status, when) {

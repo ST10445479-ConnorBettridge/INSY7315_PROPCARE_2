@@ -25387,7 +25387,7 @@
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "brand-mark", children: "P" }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "brand-name", children: "PropCare" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "brand-sub", children: "OBS REALTY GROUP" })
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "brand-sub", children: "HORIZON PROPERTY GROUP" })
           ] })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "side-section", children: "Workspace" }),
@@ -25420,7 +25420,7 @@
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "brand-name", children: "PropCare" })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "crumb", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Obs Realty Group" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Horizon Property Group" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChevronRight, { size: 13 }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: roleLabels[user.role] })
           ] }),
@@ -26316,7 +26316,7 @@
           title,
           " is ready"
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "subtle", children: "This workspace is configured for Obs Realty Group." })
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { className: "subtle", children: "This workspace is configured for Horizon Property Group." })
       ] }) })
     ] });
   }
@@ -26416,7 +26416,7 @@
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "brand-mark", children: "P" }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "brand-name", children: "PropCare" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "brand-sub", children: "OBS REALTY GROUP" })
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "brand-sub", children: "HORIZON PROPERTY GROUP" })
           ] })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "login-quote", children: [
@@ -26482,7 +26482,7 @@
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "brand-mark", children: "P" }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "brand-name", children: "PropCare" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "brand-sub", children: "OBS REALTY GROUP" })
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "brand-sub", children: "HORIZON PROPERTY GROUP" })
           ] })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "login-quote", children: [

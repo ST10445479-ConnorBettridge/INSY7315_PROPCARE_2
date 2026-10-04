@@ -1,0 +1,94 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="PropCare - smart property maintenance management for Obs Realty Group. Report, track and resolve maintenance issues across the Horizon portfolio.">
+  <title>PropCare — Smart Property Maintenance Management</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏠</text></svg>">
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+
+  <!-- ============ LOGIN SCREEN ============ -->
+  <div id="loginScreen" class="login-screen hidden">
+    <div class="login-left">
+      <div class="brand brand-lg">
+        <span class="brand-logo" aria-hidden="true">&#128737;</span>
+        <span class="brand-name">PropCare</span>
+      </div>
+      <p class="login-headline">A better maintenance rhythm.</p>
+      <p class="login-sub">Nothing lost between the next call. PropCare brings residents, property teams and technicians into one calm, auditable workflow.</p>
+      <ul class="login-points">
+        <li>Report issues in under a minute, with photos</li>
+        <li>Track every request from report to resolution</li>
+        <li>One auditable history for the whole portfolio</li>
+      </ul>
+    </div>
+    <div class="login-right">
+      <div class="login-card">
+        <div class="login-portal">HORIZON TEAM PORTAL</div>
+        <h1>Welcome back</h1>
+        <p class="login-card-sub">Sign in to continue to your workspace.</p>
+
+        <label class="field-label" for="loginRole">Demo account</label>
+        <select id="loginRole" class="field">
+          <option value="sarahwilliams@example.com" selected>Sarah Williams — Tenant</option>
+          <option value="michael.jacobs@obsrealty.co.za">Michael Jacobs — Property Manager</option>
+          <option value="johan.vdm@obsrealty.co.za">Johan van der Merwe — Technician</option>
+          <option value="admin@obsrealty.co.za">System Admin — Administrator</option>
+        </select>
+
+        <label class="field-label" for="loginEmail">Work email</label>
+        <input class="field" id="loginEmail" type="email" autocomplete="username" value="sarahwilliams@example.com">
+
+        <label class="field-label" for="loginPassword">Password</label>
+        <input class="field" id="loginPassword" type="password" autocomplete="current-password" placeholder="Your password">
+
+        <div id="loginError" class="form-error hidden" role="alert"></div>
+
+        <button type="button" id="loginBtn" class="btn btn-accent btn-block">
+          <span class="btn-label">Sign in to PropCare</span>
+        </button>
+        <button type="button" id="forgotBtn" class="btn-link">Forgot your password?</button>
+        <p class="login-demo-note">Demo environment — sign in with any account above</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ APP SHELL ============ -->
+  <div id="app" class="hidden">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-logo" aria-hidden="true">&#128737;</span>
+        <span class="brand-name">PropCare</span>
+        <span class="workspace">HORIZON PROPERTY GROUP <span class="ws-ws">WORKSPACE</span></span>
+      </div>
+      <nav class="topnav" id="topNav" aria-label="Primary navigation"></nav>
+      <div class="topbar-user">
+        <span class="user-name" id="userName"></span>
+        <button type="button" class="avatar" id="userAvatar" aria-label="Open your profile">sw</button>
+        <button type="button" class="signout" id="signOutBtn">Sign out</button>
+      </div>
+    </header>
+    <div class="breadcrumb" id="breadcrumb"></div>
+    <main class="app-body" id="main">
+      <div id="appBody" tabindex="-1"></div>
+    </main>
+  </div>
+
+  <nav class="bottom-nav" id="bottomNav" aria-label="Mobile navigation"></nav>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="modalBackdrop" class="modal-backdrop hidden" data-close-modal="1">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" id="modalBox"></div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

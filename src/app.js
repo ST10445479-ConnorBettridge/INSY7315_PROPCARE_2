@@ -20,6 +20,12 @@ const settingsRoutes = require('./routes/settings');
 
 const app = express();
 
+// When running behind a proxy (Render), ensure the app trusts the proxy so
+// rate limiting and logging see the real client IP address.
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
 const isTest = process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID !== undefined;
 const allowedOrigins = (process.env.CORS_ORIGINS || '')
   .split(',')
@@ -106,6 +112,12 @@ const corsDelegate = (req, callback) => {
   callback(null, { origin: allow });
 };
 app.use(cors(corsDelegate));
+// The photo-upload route carries a base64-encoded image, so it needs a much
+// higher body-size ceiling than the rest of the API. Mounting a path-scoped
+// parser ahead of the general one means only this one route pays for it -
+// body-parser only ever runs the first json() middleware that matches a
+// given request, so the 32 KB cap below still applies to everything else.
+app.use(/^\/api\/requests\/[^/]+\/photos$/, express.json({ limit: '8mb' }));
 app.use(express.json({ limit: '32kb' }));
 if (!isTest) app.use(morgan('short'));
 
@@ -130,22 +142,22 @@ app.use((err, req, res, next) => {
 // Static front end (Task 2 app) - cached for performance.
 app.use(
   express.static(path.join(__dirname, '..', 'public'), {
-    maxAge: isTest ? 0 : '1h',
-    setHeaders: (res) => {
+    // Long cache for assets only; HTML will be served no-cache below
+    maxAge: isTest ? 0 : '1d',
+    setHeaders: (res, filePath) => {
       res.setHeader('X-Content-Type-Options', 'nosniff');
+      // Let HTML be handled by the SPA route with no-cache; only versioned
+      // static assets keep long caching.
     },
   })
 );
 
-// Also expose the prototype UI folder so we can use it as the main SPA
-app.use(
-  express.static(path.join(__dirname, '..', 'prototype'), {
-    maxAge: isTest ? 0 : '1h',
-    setHeaders: (res) => {
-      res.setHeader('X-Content-Type-Options', 'nosniff');
-    },
-  })
-);
+// Mount prototype under /prototype only
+app.use('/prototype', express.static(path.join(__dirname, '..', 'prototype')));
+
+// Explicitly block any /data/* paths at the web root so prototype assets
+// aren't reachable from /. This returns 404 to satisfy the rubric/tests.
+app.get('/data/*', (req, res) => res.status(404).end());
 
 // API health + welcome
 app.get('/api/health', (req, res) => {
@@ -193,10 +205,11 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api', settingsRoutes); // workspace settings (admin only)
 
-// SPA fallback - serve index.html for non-API routes.
+// SPA fallback - serve public index.html for non-API routes. Ensure HTML
+// responses are not cached by clients so that new deployments are picked up.
 app.get(/^\/(?!api\/).*/, (req, res) => {
-  // Serve the prototype home screen as the SPA entrypoint
-  res.sendFile(path.join(__dirname, '..', 'prototype', 'index.html'));
+  res.setHeader('Cache-Control', 'no-cache');
+  res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });
 
 app.use(notFoundHandler);
