@@ -4,6 +4,7 @@ import { spawn } from "node:child_process";
 import { readFileSync, createWriteStream, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { createHmac } from "node:crypto";
+import { createServer } from "node:http";
 
 const base = "http://127.0.0.1:5125";
 const root = resolve(import.meta.dirname, "..");
@@ -23,6 +24,9 @@ assert.ok(
 const suffix = Date.now();
 const password = "PropCare123!";
 let server, log;
+let storageServer, storageUrl, failStorage = false;
+const remoteStorage = process.env.TEST_REMOTE_STORAGE === "true";
+const storedPhotos = new Map();
 const tokens = {};
 async function call(path, method = "GET", body, token, cookie) {
   const r = await fetch(base + "/api" + path, {
@@ -49,6 +53,25 @@ async function ok(path, method, body, token, status = 200) {
 }
 before(
   async () => {
+    if (remoteStorage) {
+      storageServer = createServer(async (req, res) => {
+        if (req.headers.authorization !== "Bearer test-storage-key" || req.headers.apikey !== "test-storage-key") { res.writeHead(401).end(); return; }
+        if (failStorage) { res.writeHead(503).end(); return; }
+        const name = req.url;
+        assert.match(name, /^\/storage\/v1\/object\/propcare-photos\/[a-zA-Z0-9]+\.jpg$/);
+        if (req.method === "POST") {
+          assert.equal(req.headers["content-type"], "image/jpeg");
+          const chunks=[];for await (const chunk of req) chunks.push(chunk);
+          storedPhotos.set(name,Buffer.concat(chunks));
+          await new Promise(resolve=>setTimeout(resolve,25));
+          res.writeHead(200).end('{}');
+        } else if (req.method === "DELETE") { storedPhotos.delete(name);res.writeHead(200).end('{}'); }
+        else if (storedPhotos.has(name)) res.writeHead(200,{'Content-Type':'image/jpeg'}).end(storedPhotos.get(name));
+        else res.writeHead(404).end('{}');
+      });
+      await new Promise(resolve=>storageServer.listen(0,'127.0.0.1',resolve));
+      storageUrl=`http://127.0.0.1:${storageServer.address().port}`;
+    }
     log = createWriteStream(resolve(root, ".local-api-test.log"));
     server = spawn(
       "dotnet",
@@ -70,6 +93,8 @@ before(
           SeedDemo: "true",
           DemoPassword: password,
           Storage__Path: resolve(root, ".local/test-uploads"),
+          Storage__SupabaseUrl: storageUrl || "",
+          Storage__ServiceKey: remoteStorage ? "test-storage-key" : "",
         },
         stdio: ["ignore", "pipe", "pipe"],
       },
@@ -100,6 +125,7 @@ before(
 );
 after(() => {
   server?.kill();
+  storageServer?.close();
   log?.end();
 });
 
@@ -894,6 +920,24 @@ test("parallel photo uploads cannot exceed ten attachments", async () => {
     10,
   );
 });
+test("remote storage failure leaves no photo metadata; conflicting uploads leave no orphan objects", {skip: !remoteStorage}, async () => {
+  // Earlier scenarios save 1 issue photo, 2 technician photos, and exactly 10 concurrent-limit photos.
+  assert.equal(storedPhotos.size,13);
+  const request=await newRequest("Storage recovery");
+  const input={filename:'repair.png',kind:'issue',data:readFileSync(resolve(root,'scripts/fixtures/repair.png')).toString('base64')};
+  failStorage=true;
+  try { assert.equal((await call(`/requests/${request.id}/photos`,'POST',input,tokens.tenant)).status,503); }
+  finally { failStorage=false; }
+  assert.equal((await ok(`/requests/${request.id}`,'GET',undefined,tokens.tenant)).photos.length,0);
+  assert.equal(storedPhotos.size,13);
+  await ok(`/requests/${request.id}/photos`,'POST',input,tokens.tenant,201);
+  const detail=await ok(`/requests/${request.id}`,'GET',undefined,tokens.tenant);
+  assert.equal(storedPhotos.size,14);
+  failStorage=true;
+  try { assert.equal((await call(`/requests/${request.id}/photos/${detail.photos[0].id}`,'GET',undefined,tokens.tenant)).status,503); }
+  finally { failStorage=false; }
+});
+
 test("concurrent refresh attempts never set a cookie for a failed rotation", async () => {
   const login = await call("/auth/login", "POST", {
     email: "sarahwilliams@example.com",

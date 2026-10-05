@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 namespace PropCare.Api.Controllers;
 
 [ApiController, Authorize, Route("api/requests")]
-public class RequestsController(IRequestRepository repository, RequestService service, PropCareDb db) : ControllerBase
+public class RequestsController(IRequestRepository repository, RequestService service, PropCareDb db, PhotoStore photos) : ControllerBase
 {
     private UserAccount Account => (UserAccount)HttpContext.Items["account"]!;
     private IQueryable<MaintenanceRequest> Filter(string? status, string? q)
@@ -60,8 +60,6 @@ public class RequestsController(IRequestRepository repository, RequestService se
     {
         await repository.Find(id,Account);
         var photo = await db.Photos.SingleOrDefaultAsync(x => x.Id == photoId && x.RequestId == id) ?? throw new ApiException(404,"Photo not found.");
-        var path = service.PhotoPath(photo.Id);
-        if (!System.IO.File.Exists(path)) throw new ApiException(404,"Photo file is unavailable.");
-        return PhysicalFile(path,"image/jpeg");
+        return File(await photos.Read(photo.Id),"image/jpeg");
     }
 }

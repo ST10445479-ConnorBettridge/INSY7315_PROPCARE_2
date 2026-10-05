@@ -23,6 +23,7 @@ builder.Services.AddScoped<IRequestRepository, RequestRepository>();
 builder.Services.AddScoped<IStatusObserver, InAppNotificationObserver>();
 builder.Services.AddScoped<RequestEvents>();
 builder.Services.AddScoped<RequestService>();
+builder.Services.AddHttpClient<PhotoStore>(client => client.Timeout = TimeSpan.FromSeconds(30));
 builder.Services.AddControllers().ConfigureApiBehaviorOptions(o => o.InvalidModelStateResponseFactory = c =>
     new BadRequestObjectResult(new { message = string.Join(" ", c.ModelState.Values.SelectMany(v => v.Errors).Select(e => string.IsNullOrEmpty(e.ErrorMessage) ? "Invalid input." : e.ErrorMessage)) }));
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(o => {
