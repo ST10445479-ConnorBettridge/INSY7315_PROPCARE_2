@@ -1,0 +1,14 @@
+.git
+.vs
+.local
+.env*
+**/node_modules
+**/bin
+**/obj
+**/wwwroot
+legacy
+prototype
+output
+test-results
+browser-shots
+**/*.log

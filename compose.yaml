@@ -1,0 +1,32 @@
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: propcare
+      POSTGRES_USER: propcare
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U propcare -d propcare"]
+      interval: 5s
+      retries: 10
+  app:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:5124:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__PropCare: Host=postgres;Database=propcare;Username=propcare;Password=${POSTGRES_PASSWORD}
+      Jwt__Key: ${JWT_KEY:?Set JWT_KEY to a random 32-byte or longer value}
+      SeedDemo: "true"
+      DemoPassword: ${DEMO_PASSWORD:?Set DEMO_PASSWORD}
+      Storage__Path: /app/storage
+    volumes:
+      - request-photos:/app/storage
+volumes:
+  postgres-data:
+  request-photos:

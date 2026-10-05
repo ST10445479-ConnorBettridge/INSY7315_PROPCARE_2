@@ -1,80 +1,70 @@
-name: CI - Lint, Build and Test
-
+name: PropCare CI
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, "feature/**", "fix/**"]
   pull_request:
-    branches: [main]
+    branches: [main, develop]
   workflow_dispatch:
-
+permissions:
+  contents: read
 jobs:
-  test:
-    name: Test (Node ${{ matrix.node-version }})
+  verify:
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        node-version: [22.x]
-
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: propcare_test
+          POSTGRES_USER: propcare
+          POSTGRES_PASSWORD: integration-test-password
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U propcare -d propcare_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_CONNECTION: Host=127.0.0.1;Port=5432;Database=propcare_test;Username=propcare;Password=integration-test-password
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 22
           cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Syntax-check server and source files
-        shell: bash
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - run: npm ci
+      - run: npm ci --prefix frontend
+      - run: npm audit --audit-level=high && npm audit --prefix frontend --audit-level=high
+      - run: npm run build
+      - run: dotnet tool restore && dotnet ef migrations has-pending-model-changes --project backend/PropCare.Api --configuration Release --no-build
+      - run: npm test
+      - name: Start the browser test instance
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
+          ConnectionStrings__PropCare: ${{ env.TEST_DATABASE_CONNECTION }}
+          Jwt__Key: ci-only-signing-key-at-least-32-bytes-long
+          SeedDemo: "true"
+          DemoPassword: PropCare123!
         run: |
-          shopt -s globstar nullglob
-          files=(server.js scripts/*.js src/**/*.js src/*.js)
-
-          if [ ${#files[@]} -eq 0 ]; then
-            echo "::error::No source files matched - the syntax check glob is broken."
-            exit 1
-          fi
-
-          echo "Syntax-checking ${#files[@]} files"
-
-          for f in "${files[@]}"; do
-            echo "Checking $f"
-            node --check "$f" || exit 1
+          cd backend/PropCare.Api
+          dotnet bin/Release/net10.0/PropCare.Api.dll --urls http://127.0.0.1:5124 > ../../browser-api.log 2>&1 &
+          for attempt in {1..60}; do
+            if curl -fsS http://127.0.0.1:5124/api/health; then exit 0; fi
+            sleep 1
           done
-
-      - name: Syntax-check front-end files
-        shell: bash
-        run: |
-          shopt -s nullglob
-          files=(public/js/*.js)
-
-          if [ ${#files[@]} -eq 0 ]; then
-            echo "::error::No front-end files matched - the syntax check glob is broken."
-            exit 1
-          fi
-
-          for f in "${files[@]}"; do
-            echo "Checking $f"
-            node --check "$f" || exit 1
-          done
-
-      - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level=high
-
-      - name: Run automated test suite
-        run: npm test
-
-      - name: Validate prototype HTML (Task 1 deliverable)
-        run: |
-          for f in prototype/*.html; do
-            echo "Validating $f"
-            npx --yes html-validate "$f"
-          done
-
-      - name: Validate Task 2 app shell HTML
-        run: npx --yes html-validate public/index.html
+          exit 1
+      - run: npm run test:browser
+      - run: npm run test:browser:edge-cases
+      - run: npm run test:accessibility
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: local-test-evidence
+          path: |
+            test-results/
+            .local-api-test.log
+            browser-api.log
