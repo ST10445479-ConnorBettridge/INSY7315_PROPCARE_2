@@ -1,0 +1,6 @@
+@PropCare.Api_HostAddress = http://127.0.0.1:5124
+
+GET {{PropCare.Api_HostAddress}}/api/health
+Accept: application/json
+
+###
