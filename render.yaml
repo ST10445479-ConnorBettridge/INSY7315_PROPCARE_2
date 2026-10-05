@@ -7,7 +7,8 @@ services:
     plan: free
     region: frankfurt
     branch: main
-    autoDeployTrigger: checksPass
+    # GitHub's deploy workflow sends the tested commit through the secret deploy hook.
+    autoDeployTrigger: off
     healthCheckPath: /api/health
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
