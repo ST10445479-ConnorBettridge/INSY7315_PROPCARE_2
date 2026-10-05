@@ -604,7 +604,7 @@ function Report({ notify }) {
       <Heading eyebrow="LET’S GET IT SORTED" title="Report an issue">
         Give your property manager the details they need to help.
       </Heading>
-      <Loading state={units}>
+      <Loading state={{ ...units, loading: units.loading || categories.loading, error: units.error || categories.error }}>
         {(list) =>
           list.length ? (
             <div className="form-layout">

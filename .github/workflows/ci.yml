@@ -13,7 +13,7 @@ jobs:
     timeout-minutes: 15
     services:
       postgres:
-        image: postgres:18
+        image: postgres:17
         env:
           POSTGRES_DB: propcare_test
           POSTGRES_USER: propcare
@@ -42,6 +42,10 @@ jobs:
       - run: npm run build
       - run: dotnet tool restore && dotnet ef migrations has-pending-model-changes --project backend/PropCare.Api --configuration Release --no-build
       - run: npm test
+      - name: Verify private object storage and failure recovery
+        run: npm test
+        env:
+          TEST_REMOTE_STORAGE: "true"
       - name: Start the browser test instance
         env:
           ASPNETCORE_ENVIRONMENT: Development

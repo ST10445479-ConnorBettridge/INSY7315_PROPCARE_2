@@ -1,4 +1,4 @@
-name: Verify hosted release
+name: Deploy and verify hosted release
 on:
   workflow_run:
     workflows: [PropCare CI]
@@ -6,13 +6,30 @@ on:
     types: [completed]
 permissions:
   contents: read
+concurrency:
+  group: production-release
+  cancel-in-progress: false
 jobs:
   verify:
-    if: github.event.workflow_run.conclusion == 'success' && vars.APP_URL != ''
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_repository.full_name == github.repository && vars.APP_URL != ''
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: production
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Deploy the commit that passed CI
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          EXPECTED_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          test -n "$RENDER_DEPLOY_HOOK_URL" || { echo "Configure RENDER_DEPLOY_HOOK_URL."; exit 1; }
+          curl -fsS --max-time 30 -X POST "${RENDER_DEPLOY_HOOK_URL}&ref=${EXPECTED_SHA}" -o /tmp/deploy.json
+          echo "Render accepted the tested release."
       - name: Verify the tested commit is serving
         env:
           APP_URL: ${{ vars.APP_URL }}
@@ -28,3 +45,14 @@ jobs:
           done
           echo "The tested release did not become healthy in time."
           exit 1
+      - name: Verify the hosted role workflow and private photo access
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+          EXPECTED_SHA: ${{ github.event.workflow_run.head_sha }}
+          DEMO_PASSWORD: ${{ secrets.HOSTED_DEMO_PASSWORD }}
+        run: node scripts/hosted-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hosted-release-evidence
+          path: test-results/hosted/
