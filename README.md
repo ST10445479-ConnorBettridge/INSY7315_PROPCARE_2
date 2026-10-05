@@ -2,6 +2,18 @@
 
 Property maintenance for Obs Realty Group. The active application uses the Part 1 stack: **React, ASP.NET Core and PostgreSQL**. It supports tenants, property managers, technicians and administrators.
 
+## Task 2 submission and presentation
+
+- **Presentation video:** [Watch the group presentation on YouTube](https://youtu.be/Mp6bIOCUu0U).
+- **Live application:** [Open PropCare](https://propcare-sunx.onrender.com).
+- **Requirements and architecture:** [Part 1 requirements mapping and implementation](docs/REQUIREMENTS.md).
+- **Hosting and release process:** [Deployment details and free-plan limits](docs/DEPLOYMENT.md).
+- **Testing and rubric evidence:** [Task 2 audit](docs/AUDIT-2026-10-05.md) and [successful automatic deployment and hosted verification](https://github.com/ST10445479-ConnorBettridge/INSY7315_PROPCARE_2/actions/runs/37353651170).
+
+Section 9.6 requires **one group member to submit this GitHub repository link on ARC**: https://github.com/ST10445479-ConnorBettridge/INSY7315_PROPCARE_2. The repository contains the source and this README; presentation documentation may be included here. That section does not require a separate Word document or PowerPoint upload.
+
+The hosted demonstration uses fictional accounts for all four roles. Obtain the hosted demo password privately from the submitting group member; the local password below does not apply to the hosted app. Free hosting can sleep or pause when inactive, so open the live application before presenting. The video provides a recorded demonstration.
+
 ## Run on this computer
 
 From `C:\CursorProjects\PropCare`:
@@ -121,4 +133,4 @@ The original source history remains intact. `upstream` points to Zulfique's sour
 
 The source snapshot had no top-level project licence file. Existing source notices remain, and frontend dependency licence text is included in `frontend/public/third-party-notices.txt`. Package licences also accompany their dependency distributions. The archived Express code is retained for comparison and is not built, tested or deployed by the active workflows.
 
-The current five-person rehearsal script is in `output/documents/PropCare-Task2-Presentation-Script-Short.docx` (1,184 spoken words, targeting 12½ minutes including the demonstration).
+The submitted presentation is linked at the top of this README. Rehearsal scripts and video-editing files are retained locally and are not needed to run or review the repository.
