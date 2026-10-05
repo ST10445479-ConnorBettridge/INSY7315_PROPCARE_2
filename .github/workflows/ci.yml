@@ -68,3 +68,18 @@ jobs:
             test-results/
             .local-api-test.log
             browser-api.log
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify production container and persistent storage
+        run: node scripts/container-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: container-test-evidence
+          path: test-results/container/
