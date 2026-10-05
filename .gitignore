@@ -1,5 +1,12 @@
 # Secrets - never commit
 .env
+.env.*
+!.env.example
+.local/
+**/wwwroot/
+**/dist/
+TestResults/
+test-results/
 
 # Node
 node_modules/
@@ -27,6 +34,9 @@ Thumbs.db
 coverage/
 .playwright-mcp/
 browser-shots/
+output/video/
+~$*
+/PropCare-Task2-Presentation-Script-Revised.docx
 
 # Visual Studio / .NET
 .vs/
