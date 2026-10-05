@@ -1,54 +1,23 @@
 {
-  "name": "propcare-wil-task2",
-  "version": "2.0.0",
-  "description": "PropCare Task 2 - full-stack property maintenance management system (Express + SQLite + JWT + REST API) for Obs Realty Group",
-  "main": "server.js",
+  "name": "propcare",
+  "version": "3.0.0",
+  "private": true,
+  "description": "PropCare for Obs Realty Group — React, ASP.NET Core and PostgreSQL",
   "scripts": {
-    "start": "node --experimental-sqlite server.js",
-    "dev": "nodemon --experimental-sqlite server.js",
-    "seed": "node --experimental-sqlite scripts/seed-cli.js",
-    "test": "node --experimental-sqlite --experimental-vm-modules node_modules/jest/bin/jest.js",
-    "test:serial": "node --experimental-sqlite --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand",
-    "test:debug": "node --experimental-sqlite --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand --detectOpenHandles --verbose",
-    "test:watch": "node --experimental-sqlite --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
-    "test:browser": "node scripts/browser-test.js",
-    "test:browser:shots": "node scripts/browser-test.js --shots-only",
-    "check": "node --check server.js && node --check src/app.js && node --check src/db.js && node --check src/services/requests.js && node --check public/js/api.js && node --check public/js/app.js"
-  },
-  "keywords": [
-    "propcare",
-    "property-management",
-    "maintenance",
-    "express",
-    "sqlite",
-    "rest-api",
-    "jwt"
-  ],
-  "author": "Zulfique",
-  "license": "ISC",
-  "engines": {
-    "node": ">=22.5.0"
-  },
-  "dependencies": {
-    "bcryptjs": "^3.0.3",
-    "cors": "^2.8.6",
-    "dotenv": "^16.4.5",
-    "express": "^4.19.2",
-    "express-rate-limit": "^7.4.1",
-    "express-validator": "^7.3.0",
-    "helmet": "^7.2.0",
-    "jsonwebtoken": "^9.0.2",
-    "morgan": "^1.10.0",
-    "winston": "^3.19.0"
+    "build": "npm run build --prefix frontend && dotnet build backend/PropCare.Api -c Release",
+    "start": "node scripts/start.mjs",
+    "dev": "npm run dev --prefix frontend",
+    "test": "node --test --test-concurrency=1 scripts/api.test.mjs",
+    "test:browser": "node scripts/react-browser-test.mjs",
+    "test:browser:edge-cases": "node scripts/browser-edge-cases.mjs",
+    "test:accessibility": "node scripts/accessibility-test.mjs",
+    "audit:infrastructure": "dotnet publish backend/PropCare.Api -c Release -o .local/publish && node scripts/infrastructure-audit.mjs"
   },
   "devDependencies": {
-    "jest": "^29.7.0",
-    "nodemon": "^3.1.4",
-    "puppeteer": "^25.12.0",
-    "supertest": "^7.0.0"
+    "@axe-core/puppeteer": "^4.13.0",
+    "puppeteer": "25.12.0"
   },
-  "directories": {
-    "test": "tests"
-  },
-  "type": "commonjs"
+  "engines": {
+    "node": ">=22.12"
+  }
 }
