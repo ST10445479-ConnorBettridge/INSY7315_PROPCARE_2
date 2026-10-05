@@ -1,0 +1,54 @@
+# Render Blueprint for PropCare WIL Task 2.
+#
+# Applies automatically when this file is present at the repo root and the repo
+# is connected to Render (or via "New + > Blueprint").
+#
+# 100% free, and deliberately zero-configuration: there is no persistent disk,
+# no database to provision and not a single secret to supply. Creating the
+# Blueprint is the entire setup step.
+#
+# Why there is no `disk:` block
+# ----------------------------
+# Render's Free compute plan cannot attach a persistent disk -- persistent disks
+# are a paid-plan feature. Requesting one here makes the Blueprint fail to
+# provision, so the app is built to run on the Free plan's ephemeral filesystem
+# instead. The service seeds itself on every cold start, so the app is always
+# fully populated and immediately usable. See README.md > Hosting for the full
+# list of what that trade-off means.
+services:
+  - type: web
+    name: propcare-wil-task2
+    runtime: node
+    plan: free
+    buildCommand: npm ci --omit=dev
+    startCommand: node --experimental-sqlite server.js
+    healthCheckPath: /api/health
+    # No `sync: false` entries anywhere in this file: `sync: false` makes Render
+    # prompt the operator for a value during Blueprint creation, which is
+    # exactly the manual secret step this configuration is designed to avoid.
+    # Every value below has a working in-code default.
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: JWT_EXPIRES_IN
+        value: 2h
+      # Free instances have an ephemeral filesystem, so the SQLite file lives
+      # under /tmp and is rebuilt from the seed on every cold start.
+      - key: DB_PATH
+        value: /tmp/propcare.db
+      # JWT_SECRET is deliberately absent. When it is unset the server generates
+      # a random 64-character secret at boot (src/utils/secret.js) and reports
+      # only that it did so, never the value. Nothing to configure, and no fixed
+      # secret is ever committed to the repository.
+      #
+      # Demo sign-in password. This is a PUBLIC demo credential for a seeded
+      # database of fictional sample data, not a secret: it is printed in the
+      # README and rendered on the login screen's one-click demo sign-in. It is
+      # pinned in code because Free instances offer no SSH or dashboard shell,
+      # so an operator cannot read a generated password off the filesystem.
+      - key: DEMO_PASSWORD
+        value: PropCare123!

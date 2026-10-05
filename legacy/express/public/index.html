@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign in | PropCare</title>
     <meta name="theme-color" content="#101b2b">
-    <link rel="icon" href="assets/favicon.svg">
 
     <!-- Fonts: Manrope only -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,9 +14,10 @@
     <link rel="stylesheet" href="css/styles.css?v=3.0.0">
   </head>
   <body>
+    <a href="#main" class="skip-link">Skip to main content</a>
     <!-- LOGIN SCREEN -->
     <div id="loginScreen" class="login-screen hidden">
-      <section class="login-left" aria-hidden="true">
+      <section class="login-left" aria-label="About PropCare">
         <div class="login-orbit" aria-hidden="true"></div>
         <div class="login-left-inner">
           <a class="brand brand-lg" href="#/">
@@ -42,7 +42,7 @@
       <section class="login-right" aria-labelledby="welcomeHeading">
         <div class="login-card">
           <header>
-            <div class="login-portal">Horizon Team Portal</div>
+            <div class="login-portal">Obs Realty Group Portal</div>
             <h2 id="welcomeHeading">Welcome back</h2>
             <div class="login-card-sub">Sign in to continue to your workspace.</div>
           </header>
@@ -84,9 +84,47 @@
     </div>
 
     <!-- APP SHELL -->
-    <div id="app" class="app-shell hidden"></div>
+  <div id="app" class="hidden app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <span class="brand-mark" aria-hidden="true">&#128737;</span>
+        <div>
+          <div class="brand-name">PropCare</div>
+          <div class="brand-sub">Obs Realty Group</div>
+        </div>
+      </div>
+      <nav class="sidebar-nav" id="topNav" aria-label="Primary navigation"></nav>
+      <div class="sidebar-spacer"></div>
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <button type="button" class="avatar" id="userAvatar" aria-label="Open your profile"></button>
+          <div>
+            <div class="sidebar-user-name" id="userName"></div>
+            <div class="sidebar-user-role" id="userRoleLabel"></div>
+          </div>
+        </div>
+        <button type="button" class="sidebar-signout" id="signOutBtn">
+          <span aria-hidden="true">&#8630;</span> Sign out
+        </button>
+      </div>
+    </aside>
+    <div class="main">
+      <header class="topbar">
+        <div class="breadcrumb" id="breadcrumb"></div>
+      </header>
+      <main class="content" id="main">
+        <div id="appBody" tabindex="-1"></div>
+      </main>
+    </div>
+  </div>
 
-    <script src="data/seed-data.js"></script>
+  <nav class="bottom-nav" id="bottomNav" aria-label="Mobile navigation"></nav>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="modalBackdrop" class="modal-backdrop hidden" data-close-modal="1">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" id="modalBox"></div>
+  </div>
+
     <script src="js/api.js?v=3.0.0"></script>
     <script src="js/app.js?v=3.0.0"></script>
   </body>

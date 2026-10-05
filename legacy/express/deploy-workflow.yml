@@ -1,0 +1,108 @@
+name: CD - Verify live deployment
+
+# Render's Git integration deploys on its own when main changes, so this workflow
+# never stores or requires a deploy hook. A deploy hook is a bearer token, and
+# this pipeline is deliberately token-free. All this does is run the pre-flight
+# gate and then prove the live site is actually serving the new commit.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      checks_url:
+        description: 'Live app base URL to verify, e.g. https://propcare-wil-task2.onrender.com'
+        required: false
+        type: string
+        default: https://propcare-wil-task2.onrender.com
+
+concurrency:
+  group: live-verify
+  cancel-in-progress: true
+
+jobs:
+  preflight:
+    name: Pre-flight
+    runs-on: ubuntu-latest
+    outputs:
+      reachable: ${{ steps.probe.outputs.reachable }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run automated tests
+        run: npm test
+
+      - name: Run syntax checks
+        run: npm run check
+
+      - name: Run dependency audit
+        run: npm audit --audit-level=high
+
+      - name: Probe whether the Render service exists yet
+        id: probe
+        env:
+          BASE: ${{ inputs.checks_url || 'https://propcare-wil-task2.onrender.com' }}
+        run: |
+          # A Free instance is asleep until something requests it, and a service
+          # that has never been created does not resolve at all. Only the
+          # "does not resolve" case means "not deployed yet" -- any HTTP response,
+          # including 404 or 502, proves the hostname is live and should be waited
+          # on rather than skipped.
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "$BASE/api/health" || echo "000")
+          if [ "$code" = "000" ]; then
+            echo "reachable=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No response yet from $BASE - the Render service has not been created."
+          else
+            echo "reachable=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::$BASE responded with HTTP $code."
+          fi
+
+  verify:
+    name: Verify live deployment
+    needs: preflight
+    if: needs.preflight.outputs.reachable == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Poll /api/health until ready
+        env:
+          BASE: ${{ inputs.checks_url || 'https://propcare-wil-task2.onrender.com' }}
+        run: |
+          # Generous window: a Free instance takes about a minute to wake from
+          # spin-down, and a first deploy also has to finish the build and the
+          # npm ci before it can answer.
+          deadline=$(( $(date +%s) + 1200 ))
+          last="no response"
+          while [ "$(date +%s)" -lt "$deadline" ]; do
+            code=$(curl -s -o /tmp/health.json -w '%{http_code}' --max-time 30 "$BASE/api/health" || echo "000")
+            if [ "$code" = "200" ] && grep -q '"status":"success"' /tmp/health.json; then
+              echo "::notice::Live deployment healthy at $BASE/api/health"
+              cat /tmp/health.json
+              exit 0
+            fi
+            last="HTTP $code"
+            echo "Waiting for the live app... ($last)"
+            sleep 20
+          done
+          echo "::error::$BASE/api/health was not healthy within 20 minutes (last: $last)"
+          exit 1
+
+  not-deployed:
+    name: Render service not created yet
+    needs: preflight
+    if: needs.preflight.outputs.reachable != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report
+        run: |
+          echo "::notice::Skipped live verification: no Render service is answering yet."
+          echo "::notice::Create one from the repo's render.yaml (Render > New + > Blueprint)."
+          echo "::notice::No secrets or API keys are required; every value has an in-code default."
