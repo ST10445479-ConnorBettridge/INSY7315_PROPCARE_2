@@ -78,6 +78,7 @@ try {
   pass("keyboard-only login");
   await tenant.goto(base + "/#/report");
   await tenant.waitForSelector("input[name=title]");
+  await tenant.waitForSelector("select[name=categoryId]");
   let creates = 0,
     failPhoto = true,
     failLogout = false;
