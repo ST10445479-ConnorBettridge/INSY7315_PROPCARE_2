@@ -1,0 +1,659 @@
+{
+  "users": [
+    {
+      "id": "U1",
+      "name": "Sarah Williams",
+      "email": "sarahwilliams@example.com",
+      "role": "tenant",
+      "active": 1,
+      "created_at": "2026-10-05T10:22:06.290Z"
+    },
+    {
+      "id": "U2",
+      "name": "Michael Jacobs",
+      "email": "michael.jacobs@obsrealty.co.za",
+      "role": "manager",
+      "active": 1,
+      "created_at": "2026-10-05T10:22:06.290Z"
+    },
+    {
+      "id": "U3",
+      "name": "Ayesha Patel",
+      "email": "ayesha.patel@obsrealty.co.za",
+      "role": "manager",
+      "active": 1,
+      "created_at": "2026-10-05T10:22:06.290Z"
+    },
+    {
+      "id": "U4",
+      "name": "Thabo Nkosi",
+      "email": "thabo.nkosi@example.com",
+      "role": "tenant",
+      "active": 1,
+      "created_at": "2026-10-05T10:22:06.290Z"
+    },
+    {
+      "id": "U5",
+      "name": "Priya Naidoo",
+      "email": "priya.naidoo@example.com",
+      "role": "tenant",
+      "active": 1,
+      "created_at": "2026-10-05T10:22:06.290Z"
+    },
+    {
+      "id": "U6",
+      "name": "Zanele Dlamini",
+      "email": "zanele.dlamini@example.com",
+      "role": "tenant",
+      "active": 1,
+      "created_at": "2026-10-05T10:22:06.290Z"
+    },
+    {
+      "id": "U7",
+      "name": "Pieter Botha",
+      "email": "pieter.botha@example.com",
+      "role": "tenant",
+      "active": 1,
+      "created_at": "2026-10-05T10:22:06.290Z"
+    },
+    {
+      "id": "U8",
+      "name": "Aisha Khan",
+      "email": "aisha.khan@example.com",
+      "role": "tenant",
+      "active": 1,
+      "created_at": "2026-10-05T10:22:06.290Z"
+    },
+    {
+      "id": "U9",
+      "name": "Johan van der Merwe",
+      "email": "johan.vdm@obsrealty.co.za",
+      "role": "technician",
+      "active": 1,
+      "created_at": "2026-10-05T10:22:06.290Z"
+    },
+    {
+      "id": "U10",
+      "name": "Riaan Botha",
+      "email": "riaan.botha@obsrealty.co.za",
+      "role": "technician",
+      "active": 1,
+      "created_at": "2026-10-05T10:22:06.290Z"
+    },
+    {
+      "id": "U11",
+      "name": "Naledi Mokoena",
+      "email": "naledi.mokoena@obsrealty.co.za",
+      "role": "technician",
+      "active": 1,
+      "created_at": "2026-10-05T10:22:06.290Z"
+    },
+    {
+      "id": "U12",
+      "name": "David Pillay",
+      "email": "david.pillay@obsrealty.co.za",
+      "role": "technician",
+      "active": 1,
+      "created_at": "2026-10-05T10:22:06.290Z"
+    },
+    {
+      "id": "U13",
+      "name": "Mark Petersen",
+      "email": "mark.petersen@obsrealty.co.za",
+      "role": "technician",
+      "active": 1,
+      "created_at": "2026-10-05T10:22:06.290Z"
+    },
+    {
+      "id": "U14",
+      "name": "System Admin",
+      "email": "admin@obsrealty.co.za",
+      "role": "admin",
+      "active": 1,
+      "created_at": "2026-10-05T10:22:06.290Z"
+    }
+  ],
+  "properties": [
+    {
+      "id": "P1",
+      "name": "Oak Avenue Residences",
+      "address": "12 Oak Avenue",
+      "area": "Claremont",
+      "manager_id": "U2"
+    },
+    {
+      "id": "P2",
+      "name": "The Rondebosch Collection",
+      "address": "41 Main Road",
+      "area": "Rondebosch",
+      "manager_id": "U2"
+    },
+    {
+      "id": "P3",
+      "name": "Kenilworth Mews",
+      "address": "8 Doncaster Road",
+      "area": "Kenilworth",
+      "manager_id": "U3"
+    },
+    {
+      "id": "P4",
+      "name": "Observatory Lofts",
+      "address": "17 Lower Trill Rd",
+      "area": "Observatory",
+      "manager_id": "U2"
+    },
+    {
+      "id": "P5",
+      "name": "Bellville Grove",
+      "address": "5 Voortrekker Road",
+      "area": "Bellville",
+      "manager_id": "U3"
+    },
+    {
+      "id": "P6",
+      "name": "Century City Quays",
+      "address": "22 Rialto Road",
+      "area": "Century City",
+      "manager_id": "U2"
+    },
+    {
+      "id": "P7",
+      "name": "Durbanville House",
+      "address": "3 Wellington Road",
+      "area": "Durbanville",
+      "manager_id": "U3"
+    },
+    {
+      "id": "P8",
+      "name": "Milnerton Sands",
+      "address": "66 Beach Road",
+      "area": "Milnerton",
+      "manager_id": "U2"
+    },
+    {
+      "id": "P9",
+      "name": "Newlands Park",
+      "address": "9 Kildare Road",
+      "area": "Newlands",
+      "manager_id": "U3"
+    },
+    {
+      "id": "P10",
+      "name": "Mowbray Terraces",
+      "address": "28 Mowbray Road",
+      "area": "Mowbray",
+      "manager_id": "U2"
+    }
+  ],
+  "units": [
+    {
+      "id": 1,
+      "user_id": "U1",
+      "property_id": "P1",
+      "name": "Claremont Unit 3B"
+    },
+    {
+      "id": 2,
+      "user_id": "U1",
+      "property_id": "P1",
+      "name": "Claremont Unit 1A"
+    },
+    {
+      "id": 3,
+      "user_id": "U1",
+      "property_id": "P6",
+      "name": "Century City Unit 2A"
+    },
+    {
+      "id": 4,
+      "user_id": "U1",
+      "property_id": "P1",
+      "name": "Claremont Unit 5A"
+    },
+    {
+      "id": 5,
+      "user_id": "U4",
+      "property_id": "P2",
+      "name": "Rondebosch Unit 7"
+    },
+    {
+      "id": 6,
+      "user_id": "U4",
+      "property_id": "P4",
+      "name": "Observatory Unit 12"
+    },
+    {
+      "id": 7,
+      "user_id": "U5",
+      "property_id": "P3",
+      "name": "Kenilworth Unit 4"
+    },
+    {
+      "id": 8,
+      "user_id": "U6",
+      "property_id": "P5",
+      "name": "Bellville Unit 9"
+    },
+    {
+      "id": 9,
+      "user_id": "U6",
+      "property_id": "P7",
+      "name": "Durbanville Unit 3"
+    },
+    {
+      "id": 10,
+      "user_id": "U7",
+      "property_id": "P8",
+      "name": "Milnerton Unit 11"
+    },
+    {
+      "id": 11,
+      "user_id": "U7",
+      "property_id": "P10",
+      "name": "Mowbray Unit 6"
+    },
+    {
+      "id": 12,
+      "user_id": "U8",
+      "property_id": "P9",
+      "name": "Newlands Unit 2"
+    }
+  ],
+  "categories": [
+    {
+      "id": "plumbing",
+      "name": "Plumbing"
+    },
+    {
+      "id": "electrical",
+      "name": "Electrical"
+    },
+    {
+      "id": "hvac",
+      "name": "Heating & cooling"
+    },
+    {
+      "id": "security",
+      "name": "Security"
+    },
+    {
+      "id": "appliances",
+      "name": "Appliances"
+    }
+  ],
+  "technicians": [
+    {
+      "id": "T1",
+      "user_id": "U9",
+      "skill": "Plumbing"
+    },
+    {
+      "id": "T2",
+      "user_id": "U10",
+      "skill": "Electrical"
+    },
+    {
+      "id": "T3",
+      "user_id": "U11",
+      "skill": "Heating & cooling"
+    },
+    {
+      "id": "T4",
+      "user_id": "U12",
+      "skill": "Security"
+    },
+    {
+      "id": "T5",
+      "user_id": "U13",
+      "skill": "Appliances"
+    }
+  ],
+  "requests": [
+    {
+      "id": "REQ-1045",
+      "property_id": "P1",
+      "unit": "Claremont Unit 3B",
+      "tenant_id": "U1",
+      "category": "plumbing",
+      "title": "Kitchen sink leaking",
+      "detail": "Water is pooling under the kitchen sink and the cupboard base is becoming saturated. It has been leaking since yesterday morning.",
+      "urgency": "high",
+      "status": "in-progress",
+      "tech_id": "T1",
+      "created": "2026-08-08",
+      "updated": "2026-08-14",
+      "photos": 0
+    },
+    {
+      "id": "REQ-1046",
+      "property_id": "P1",
+      "unit": "Claremont Unit 1A",
+      "tenant_id": "U1",
+      "category": "plumbing",
+      "title": "Leaking tap in bathroom",
+      "detail": "The hot water tap in the main bathroom drips continuously and will not fully close.",
+      "urgency": "normal",
+      "status": "submitted",
+      "tech_id": null,
+      "created": "2026-08-12",
+      "updated": "2026-08-12",
+      "photos": 0
+    },
+    {
+      "id": "REQ-1061",
+      "property_id": "P6",
+      "unit": "Century City Unit 2A",
+      "tenant_id": "U1",
+      "category": "security",
+      "title": "Pool pump making noise",
+      "detail": "The pool pump housing is vibrating loudly during operation and the access cover has come loose.",
+      "urgency": "high",
+      "status": "assigned",
+      "tech_id": "T4",
+      "created": "2026-08-10",
+      "updated": "2026-08-14",
+      "photos": 0
+    },
+    {
+      "id": "REQ-1076",
+      "property_id": "P1",
+      "unit": "Claremont Unit 5A",
+      "tenant_id": "U1",
+      "category": "appliances",
+      "title": "Oven not heating",
+      "detail": "The oven reaches temperature very slowly and then switches off mid-cycle.",
+      "urgency": "normal",
+      "status": "under-review",
+      "tech_id": null,
+      "created": "2026-08-13",
+      "updated": "2026-08-14",
+      "photos": 0
+    },
+    {
+      "id": "REQ-1032",
+      "property_id": "P2",
+      "unit": "Rondebosch Unit 7",
+      "tenant_id": "U4",
+      "category": "electrical",
+      "title": "No power in living room",
+      "detail": "Two sockets and the light fitting in the living room have no power after the storm.",
+      "urgency": "urgent",
+      "status": "in-progress",
+      "tech_id": "T2",
+      "created": "2026-08-06",
+      "updated": "2026-08-13",
+      "photos": 0
+    },
+    {
+      "id": "REQ-1038",
+      "property_id": "P4",
+      "unit": "Observatory Unit 12",
+      "tenant_id": "U4",
+      "category": "hvac",
+      "title": "Air conditioner not cooling",
+      "detail": "The wall unit blows warm air even on the lowest temperature setting.",
+      "urgency": "normal",
+      "status": "on-hold",
+      "tech_id": "T3",
+      "created": "2026-08-07",
+      "updated": "2026-08-12",
+      "photos": 0
+    },
+    {
+      "id": "REQ-1027",
+      "property_id": "P3",
+      "unit": "Kenilworth Unit 4",
+      "tenant_id": "U5",
+      "category": "appliances",
+      "title": "Dishwasher not draining",
+      "detail": "The dishwasher completes a cycle but leaves water standing in the bottom.",
+      "urgency": "low",
+      "status": "completed",
+      "tech_id": "T5",
+      "created": "2026-08-02",
+      "updated": "2026-08-09",
+      "photos": 0
+    },
+    {
+      "id": "REQ-1015",
+      "property_id": "P5",
+      "unit": "Bellville Unit 9",
+      "tenant_id": "U6",
+      "category": "plumbing",
+      "title": "Toilet running continuously",
+      "detail": "The cistern keeps refilling and never stops. Please inspect the inlet valve.",
+      "urgency": "normal",
+      "status": "completed",
+      "tech_id": "T1",
+      "created": "2026-07-28",
+      "updated": "2026-08-04",
+      "photos": 0
+    },
+    {
+      "id": "REQ-1009",
+      "property_id": "P8",
+      "unit": "Milnerton Unit 11",
+      "tenant_id": "U7",
+      "category": "security",
+      "title": "Front gate lock sticking",
+      "detail": "The electronic gate opens but the manual lock is stiff and difficult to turn.",
+      "urgency": "normal",
+      "status": "closed",
+      "tech_id": "T4",
+      "created": "2026-07-20",
+      "updated": "2026-07-29",
+      "photos": 0
+    },
+    {
+      "id": "REQ-1019",
+      "property_id": "P9",
+      "unit": "Newlands Unit 2",
+      "tenant_id": "U8",
+      "category": "electrical",
+      "title": "Ceiling light flickering",
+      "detail": "The hallway light flickers constantly and occasionally goes dark for a few seconds.",
+      "urgency": "low",
+      "status": "closed",
+      "tech_id": "T2",
+      "created": "2026-07-22",
+      "updated": "2026-07-30",
+      "photos": 0
+    },
+    {
+      "id": "REQ-1079",
+      "property_id": "P7",
+      "unit": "Durbanville Unit 3",
+      "tenant_id": "U6",
+      "category": "hvac",
+      "title": "Geyser not heating",
+      "detail": "No hot water for the last two days. The geyser thermostat may need replacement.",
+      "urgency": "urgent",
+      "status": "submitted",
+      "tech_id": null,
+      "created": "2026-08-14",
+      "updated": "2026-08-14",
+      "photos": 0
+    },
+    {
+      "id": "REQ-1078",
+      "property_id": "P10",
+      "unit": "Mowbray Unit 6",
+      "tenant_id": "U7",
+      "category": "plumbing",
+      "title": "Shower pressure very low",
+      "detail": "The shower has almost no pressure even with the tap fully open.",
+      "urgency": "normal",
+      "status": "under-review",
+      "tech_id": null,
+      "created": "2026-08-13",
+      "updated": "2026-08-14",
+      "photos": 0
+    }
+  ],
+  "comments": [
+    {
+      "id": 1,
+      "request_id": "REQ-1045",
+      "user_id": "U1",
+      "name": "Sarah Williams",
+      "role_label": "Tenant",
+      "text": "Reported the issue with photos of the leaking pipes.",
+      "created_at": "2026-08-08 09:15"
+    },
+    {
+      "id": 2,
+      "request_id": "REQ-1045",
+      "user_id": "U2",
+      "name": "Michael Jacobs",
+      "role_label": "Property Manager",
+      "text": "Thanks Sarah. Assigned to Johan and prioritised as high.",
+      "created_at": "2026-08-08 11:02"
+    },
+    {
+      "id": 3,
+      "request_id": "REQ-1045",
+      "user_id": "U9",
+      "name": "Johan van der Merwe",
+      "role_label": "Technician",
+      "text": "On site now. Replacing the flexi hose under the sink, then testing.",
+      "created_at": "2026-08-14 14:40"
+    },
+    {
+      "id": 4,
+      "request_id": "REQ-1061",
+      "user_id": "U1",
+      "name": "Sarah Williams",
+      "role_label": "Tenant",
+      "text": "The noise is getting worse at night.",
+      "created_at": "2026-08-10 17:30"
+    },
+    {
+      "id": 5,
+      "request_id": "REQ-1061",
+      "user_id": "U2",
+      "name": "Michael Jacobs",
+      "role_label": "Property Manager",
+      "text": "David will inspect the pump tomorrow morning.",
+      "created_at": "2026-08-11 08:10"
+    },
+    {
+      "id": 6,
+      "request_id": "REQ-1032",
+      "user_id": "U4",
+      "name": "Thabo Nkosi",
+      "role_label": "Tenant",
+      "text": "Still no power after the storm last night.",
+      "created_at": "2026-08-06 20:45"
+    },
+    {
+      "id": 7,
+      "request_id": "REQ-1032",
+      "user_id": "U2",
+      "name": "Michael Jacobs",
+      "role_label": "Property Manager",
+      "text": "Logged with Riaan as urgent - checking the distribution board.",
+      "created_at": "2026-08-07 07:30"
+    }
+  ],
+  "history": [
+    {
+      "id": 1,
+      "request_id": "REQ-1045",
+      "status": "Submitted",
+      "created_at": "2026-08-08 09:15"
+    },
+    {
+      "id": 2,
+      "request_id": "REQ-1045",
+      "status": "Under review",
+      "created_at": "2026-08-08 10:00"
+    },
+    {
+      "id": 3,
+      "request_id": "REQ-1045",
+      "status": "Assigned",
+      "created_at": "2026-08-08 11:02"
+    },
+    {
+      "id": 4,
+      "request_id": "REQ-1045",
+      "status": "In progress",
+      "created_at": "2026-08-09 08:20"
+    },
+    {
+      "id": 5,
+      "request_id": "REQ-1061",
+      "status": "Submitted",
+      "created_at": "2026-08-10 17:30"
+    },
+    {
+      "id": 6,
+      "request_id": "REQ-1061",
+      "status": "Under review",
+      "created_at": "2026-08-11 08:10"
+    },
+    {
+      "id": 7,
+      "request_id": "REQ-1061",
+      "status": "Assigned",
+      "created_at": "2026-08-11 08:15"
+    },
+    {
+      "id": 8,
+      "request_id": "REQ-1046",
+      "status": "Submitted",
+      "created_at": "2026-08-12 09:00"
+    },
+    {
+      "id": 9,
+      "request_id": "REQ-1076",
+      "status": "Submitted",
+      "created_at": "2026-08-13 09:00"
+    },
+    {
+      "id": 10,
+      "request_id": "REQ-1032",
+      "status": "Submitted",
+      "created_at": "2026-08-06 20:45"
+    },
+    {
+      "id": 11,
+      "request_id": "REQ-1032",
+      "status": "Assigned",
+      "created_at": "2026-08-07 07:30"
+    },
+    {
+      "id": 12,
+      "request_id": "REQ-1027",
+      "status": "Submitted",
+      "created_at": "2026-08-02 09:00"
+    },
+    {
+      "id": 13,
+      "request_id": "REQ-1027",
+      "status": "Completed",
+      "created_at": "2026-08-09 10:00"
+    },
+    {
+      "id": 14,
+      "request_id": "REQ-1009",
+      "status": "Submitted",
+      "created_at": "2026-07-20 09:00"
+    },
+    {
+      "id": 15,
+      "request_id": "REQ-1009",
+      "status": "Closed",
+      "created_at": "2026-07-29 09:00"
+    }
+  ],
+  "ratings": [
+    {
+      "id": 1,
+      "request_id": "REQ-1027",
+      "user_id": "U5",
+      "stars": 5,
+      "created_at": "2026-08-10 11:00"
+    }
+  ]
+}
