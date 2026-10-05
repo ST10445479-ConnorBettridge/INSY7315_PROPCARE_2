@@ -1,16 +1,14 @@
-# Optional deployment blueprint. Not provisioned during local development.
-# Confirm hosting costs before applying: durable uploads require a persistent disk.
+# Free app hosting; PostgreSQL and private photos are supplied by a free Supabase project.
+# Configure secrets in Render. Never store credentials in this file.
 services:
   - type: web
     name: propcare
     runtime: docker
+    plan: free
+    region: frankfurt
     branch: main
     autoDeployTrigger: checksPass
     healthCheckPath: /api/health
-    disk:
-      name: propcare-photos
-      mountPath: /app/storage
-      sizeGB: 1
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
@@ -24,5 +22,9 @@ services:
         value: "true"
       - key: DemoPassword
         sync: false
-      - key: Storage__Path
-        value: /app/storage
+      - key: Storage__SupabaseUrl
+        sync: false
+      - key: Storage__ServiceKey
+        sync: false
+      - key: Storage__Bucket
+        value: propcare-photos

@@ -25,7 +25,7 @@ The local fictional demo accounts use `PropCare123!`. Newly registered tenants r
 
 ## Set up another computer
 
-Install Node.js 22.12 or newer, the .NET 10 SDK and PostgreSQL 18. Create a database and database user for this application. The portable database and local settings on this computer are intentionally not committed.
+Install Node.js 22.12 or newer, the .NET 10 SDK and PostgreSQL 17 or 18. Hosted Supabase uses PostgreSQL 17; the portable local database and container check use 18. Create a database and database user for this application. The portable database and local settings on this computer are intentionally not committed.
 
 ```powershell
 npm ci
@@ -74,7 +74,7 @@ prototype/                      Original prototype reference
 
 Authentication uses bcrypt hashes, 15-minute JWT access tokens held in memory, and rotating refresh tokens in HttpOnly cookies. The server checks current account permissions and session revocation on authenticated requests. PostgreSQL foreign keys, unique indexes and check constraints protect related records; optimistic concurrency returns a conflict for competing updates. Request transitions, history and in-app notifications save in one transaction.
 
-Photos are authenticated resources outside the web root. The server decodes JPEG, PNG and WebP images, checks size/dimensions, strips metadata and stores a resized JPEG under a generated filename. Limits are 5 MB per input image, 20 megapixels and ten photos per request. Reference records are archived instead of deleting maintenance history.
+Photos are authenticated resources outside the web root. The server decodes JPEG, PNG and WebP images, checks size/dimensions, strips metadata and stores a resized JPEG under a generated filename. Local instances use a private directory; cloud instances use a private Supabase Storage bucket through the same authorised API. Storage credentials never reach the browser. Limits are 5 MB per input image, 20 megapixels and ten photos per request. Reference records are archived instead of deleting maintenance history.
 
 ## Verify changes
 
@@ -103,15 +103,17 @@ The full 5 October 2026 audit is in [docs/AUDIT-2026-10-05.md](docs/AUDIT-2026-1
 
 The application and deployment configuration are maintained in this repository. Hosting has not been provisioned; a successful source build does not establish a live hosted release. See the repository's Actions tab for the result of each pushed commit.
 
-The GitHub Actions CI workflow builds the required stack against a PostgreSQL service, audits dependencies, checks migrations, runs API scenarios and exercises the browser. High and critical NuGet audit warnings fail the build. The optional Render blueprint builds the Docker image after checks pass, mounts a persistent photo disk and expects a PostgreSQL connection string. The second workflow waits for `/api/health` to report the exact tested Git commit. Configure repository variable `APP_URL` and the `production` environment when hosting is authorised.
+The GitHub Actions CI workflow builds the required stack against PostgreSQL 17, audits dependencies, checks migrations, runs API scenarios and exercises the browser. High and critical NuGet audit warnings fail the build. API checks also run against a controlled object-storage server to verify private photo requests, storage failures and cleanup after concurrent uploads. The Render blueprint selects the free Docker web service; PostgreSQL and photos live in a separate free Supabase project. The hosted workflow waits for `/api/health` to report the exact tested Git commit. Configure repository variable `APP_URL` and the `production` environment for the live service.
 
 CI also builds the production Docker image in an isolated job, verifies that it runs as a non-root user, creates a maintenance request and private photo, then recreates the application container and restarts PostgreSQL. The check requires the same record, session and photo bytes to remain available. Run `node scripts/container-smoke.mjs` on a machine with Docker to reproduce it. It creates and cleans up only uniquely named test containers, networks and volumes. This verifies the container package and volume configuration; cloud uptime and HTTPS still require the hosted checks.
 
-Hosting needs a managed PostgreSQL database, HTTPS, configured credentials and a persistent photo disk. Set `ConnectionStrings__PropCare`, `Jwt__Key`, `Storage__Path` and `ASPNETCORE_ENVIRONMENT=Production`. `RENDER_GIT_COMMIT` or `RELEASE_SHA` identifies the release. The blueprint explicitly seeds fictional demo data; for an empty real deployment, set `SeedDemo=false` and provide `BootstrapAdmin__Email` and `BootstrapAdmin__Password`, then remove the bootstrap password after first startup. Back up both PostgreSQL and the photo directory. The current disk storage deployment is a single application instance; shared object storage is needed before scaling replicas.
+Hosting needs managed PostgreSQL, HTTPS and configured credentials. Set `ConnectionStrings__PropCare`, `Jwt__Key`, `Storage__SupabaseUrl`, `Storage__ServiceKey`, `Storage__Bucket` and `ASPNETCORE_ENVIRONMENT=Production`. The database connection uses a dedicated application role, private `propcare` schema, `SSL Mode=VerifyFull`, and `Root Certificate=/app/certs/supabase-ca.crt`. The bundled public CA certificate comes from Supabase's certificate distribution endpoint. The storage bucket must remain private with no anonymous read/write policies. `RENDER_GIT_COMMIT` or `RELEASE_SHA` identifies the release. The blueprint seeds fictional demo data; for an empty real deployment, set `SeedDemo=false` and provide `BootstrapAdmin__Email` and `BootstrapAdmin__Password`, then remove the bootstrap password after first startup. Back up both PostgreSQL and private bucket objects.
+
+The selected services cost $0 within their free allowances. Render sleeps after 15 idle minutes, so the first request can take roughly a minute. Supabase includes 500 MB of database space and 1 GB of object storage and can pause after a week of inactivity. Free hosting does not establish a business-hours uptime guarantee. Open the app before a presentation and check the dashboard if a paused project needs resuming. No artificial keep-alive traffic is configured. See [Render free limits](https://render.com/docs/free) and [Supabase pricing](https://supabase.com/pricing).
 
 Configure the host's trusted reverse-proxy addresses with `Proxy__KnownProxies__0` (and subsequent numbered entries) so client IP and HTTPS forwarding work correctly. Untrusted forwarded headers are ignored. The Part 1 CDN, object storage, private network tiers, managed identity, WAF and central monitoring design is not fully represented by the simpler Render blueprint; see the audit's alignment gaps before choosing the final hosting setup.
 
-`Dockerfile` and `compose.yaml` are supplied as an alternative packaging path. Docker was unavailable on this computer, so container execution and cloud delivery remain unverified. Compose expects `POSTGRES_PASSWORD`, `JWT_KEY` and `DEMO_PASSWORD`; it uses persistent database and photo volumes. Do not use `docker compose down -v` if you need to retain that data.
+`Dockerfile` and `compose.yaml` are supplied as an alternative packaging path. GitHub CI verifies the production container, including persistence after recreation. Compose expects `POSTGRES_PASSWORD`, `JWT_KEY` and `DEMO_PASSWORD`; it uses persistent database and photo volumes. Do not use `docker compose down -v` if you need to retain that data.
 
 ## Source history and notices
 
