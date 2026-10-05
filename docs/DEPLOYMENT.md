@@ -1,46 +1,46 @@
-# PropCare deployment
+# Deployment
 
-Public application: **https://propcare-sunx.onrender.com**
+**Live app:** https://propcare-sunx.onrender.com
 
-The deployment keeps the required React, ASP.NET Core and PostgreSQL stack. It uses the free Render web plan in Frankfurt and a free Supabase project in the same region. No paid compute, persistent Render disk, custom domain or subscription upgrade is selected.
+## Services
 
-## Data and access
-
-React is served by ASP.NET Core from the same HTTPS origin. Supabase hosts PostgreSQL 17 and a private `propcare-photos` object bucket. The application connects through the session pooler with a dedicated `propcare_app` role and private `propcare` schema, so application tables are not exposed through Supabase's public Data API. SSL is enforced server-side; the client verifies the certificate authority and hostname using the public CA bundled in `deployment/supabase-ca.crt`.
-
-The CA is distributed by Supabase at https://supabase-downloads.s3-ap-southeast-1.amazonaws.com/prod/ssl/prod-ca-2021.crt. It is a public trust certificate, not a private key or credential.
-
-The API authenticates and checks request ownership before returning any image bytes. It never gives the browser the storage service key. Images are decoded, resized, stripped of metadata and rewritten as JPEGs before upload. A failed database save removes the newly uploaded object; cleanup failures are logged with the object identifier. A storage failure produces an error instead of a successful photo record.
-
-## Release workflow
-
-1. Open feature/fix pull requests into `develop`, then a release PR into `main`. Both branches require `verify` and `container` checks. Peer approvals are not fabricated: the configured approval count is zero, so the record demonstrates CI gating and PR use, not independent human sign-off.
-2. CI builds the React and ASP.NET Core application, audits dependencies, checks migrations, tests PostgreSQL 17, exercises API access and storage failures, and runs browser/accessibility checks. A separate Docker job tests PostgreSQL 18 and persistence after container recreation.
-3. A successful `main` push run triggers `Deploy and verify hosted release`. Its GitHub secret calls Render's deploy hook with the tested commit SHA. The workflow only accepts trusted repository push runs.
-4. The workflow waits for the live health endpoint to report that SHA and PostgreSQL connectivity. It then checks all four roles, private photos and the complete maintenance lifecycle. Results are retained as a GitHub Actions artifact.
-
-Required GitHub configuration: repository variable `APP_URL`; secrets `RENDER_DEPLOY_HOOK_URL` and `HOSTED_DEMO_PASSWORD`; environment `production`. Hosting credentials are set only in Render's environment, with no client-side secret variables. Fictional demonstration accounts use a separately generated hosted password, supplied privately to the project owner.
-
-The initial public deployment and four-role smoke test passed on 5 October 2026. Refer to GitHub Actions for the result of each subsequent automatic release. A short successful run does not establish long-term availability.
-
-## Free-plan limits and Part 1 reconciliation
-
-| Part 1 intention | Delivered free configuration / limit |
+| Service | Use |
 | --- | --- |
-| React, ASP.NET Core and PostgreSQL | Preserved; local PostgreSQL 18 and hosted PostgreSQL 17 are covered by checks. |
-| Private cloud photo storage | Private Supabase object bucket; authorised API streams images instead of handing out expiring object URLs. |
-| Encrypted data connections | Browser HTTPS; verified database TLS; HTTPS storage requests. |
-| CDN and gateway | Render's managed edge and TLS serve one application origin. A separate static frontend CDN and separate API gateway are not provisioned. |
-| Network isolation | Dedicated database role and unexposed schema. The hosted connection uses a public TLS pooler, not a private VPC connection. |
-| Managed identity | Application bcrypt/JWT/refresh-session authentication remains in use; no external identity provider is claimed. |
-| Monitoring | Render runtime/build logs, health checks, Supabase dashboard and GitHub release verification. No external log collector or 24-hour monitoring service is configured. |
-| Availability and scale | Render may sleep after 15 idle minutes; a cold start can take roughly a minute. Supabase can pause after a week of inactivity. The free configuration cannot support a 99% business-hours availability guarantee or prove the proposed 5,000-property scale. |
-| Backups | Local database/photo restoration was tested. Free Supabase has no automatic database backups; export PostgreSQL and private bucket files together for recovery. |
+| Render Free, Frankfurt | Runs the Docker image containing ASP.NET Core and the React build |
+| Supabase Free, Frankfurt | PostgreSQL 17 database and private photo storage |
 
-Supabase Free includes 500 MB of database space and 1 GB of object storage; Render Free includes a limited allowance of runtime/build resources. Stay within the free quotas and review the dashboards before a presentation. No artificial keep-alive traffic is configured. Current limits: [Render](https://render.com/docs/free), [Supabase](https://supabase.com/pricing).
+The browser and API share one HTTPS origin. The API connects through Supabase's session pooler with a dedicated `propcare_app` role and private `propcare` schema. Database TLS verifies the hostname and the public CA certificate in `deployment/supabase-ca.crt`.
 
-## Reproduce the hosted smoke check
+Photos are stored in the private `propcare-photos` bucket. The API checks user access before returning them; storage credentials stay on the server. Requests and photos were checked after a Render restart and remained available.
 
-Set `APP_URL` and `DEMO_PASSWORD` for the fictional hosted demo, then run `node scripts/hosted-smoke.mjs`. Optional `EXPECTED_SHA` also checks the deployed revision. This deliberately creates one named demonstration request and photo and completes the request; do not run it against real client accounts. Evidence is saved in ignored `test-results/hosted/` without passwords or tokens.
+## Configuration
 
-Before recording or presenting, open the live app and wait for any cold start. If Supabase has paused, resume it from its dashboard. Keep the original local video as a fallback for connectivity problems, while identifying it as a recorded demonstration.
+Set these environment variables on the Render service:
+
+- `ConnectionStrings__PropCare`: database connection, including `Search Path=propcare`, `SSL Mode=VerifyFull` and `Root Certificate=/app/certs/supabase-ca.crt`.
+- `Jwt__Key`: a randomly generated signing key of at least 32 bytes.
+- `Storage__SupabaseUrl`, `Storage__ServiceKey` and `Storage__Bucket`: private storage connection.
+- `ASPNETCORE_ENVIRONMENT=Production`.
+- `SeedDemo=true` and `DemoPassword`: for an empty demonstration database. Existing account passwords are not reset by changing this value.
+
+Keep credentials out of source control. For an empty non-demo deployment, use `SeedDemo=false` with `BootstrapAdmin__Email` and `BootstrapAdmin__Password`; remove the bootstrap password after the first startup.
+
+## Releases
+
+Feature changes go through `develop` and a release PR into `main`. Documentation fixes may go directly through a PR into `main`. Both protected branches require the `verify` and `container` checks; the approval requirement is currently zero.
+
+After a successful main-branch CI run, `deploy.yml` sends the tested commit to Render. It waits for `/api/health` to report that revision, then checks all four roles, private photo access and the maintenance workflow. Results are saved as a GitHub Actions artifact.
+
+GitHub needs the `APP_URL` variable, `RENDER_DEPLOY_HOOK_URL` and `HOSTED_DEMO_PASSWORD` secrets, and the `production` environment. Render's separate automatic deployment setting is off because GitHub controls deployment.
+
+[Successful hosted release check, 5 October 2026](https://github.com/ST10445479-ConnorBettridge/INSY7315_PROPCARE_2/actions/runs/37353651170).
+
+## Free-plan limits
+
+Render can sleep after 15 idle minutes. Supabase can pause after a week of inactivity. Open the app before presenting and resume the database from its dashboard if necessary. The free plans do not guarantee the availability or scale proposed in Part 1.
+
+The required React, ASP.NET Core and PostgreSQL stack is unchanged. The free deployment uses a shared web/API service and a public TLS database pooler instead of the planned separate gateway and private network. Authentication is handled by the application. Monitoring uses Render/Supabase dashboards and GitHub release checks.
+
+Export PostgreSQL and private bucket files together for backups. Local database and photo restoration was tested; free Supabase does not include automatic database backups. Current allowances are listed by [Render](https://render.com/docs/free) and [Supabase](https://supabase.com/pricing).
+
+To repeat the hosted check, set `APP_URL` and `DEMO_PASSWORD`, then run `node scripts/hosted-smoke.mjs`. Set `EXPECTED_SHA` to check a particular release. This creates a fictional request and photo, so use a demo environment.

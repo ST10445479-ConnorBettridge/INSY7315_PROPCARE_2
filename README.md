@@ -1,52 +1,47 @@
 # PropCare
 
-Property maintenance for Obs Realty Group. The active application uses the Part 1 stack: **React, ASP.NET Core and PostgreSQL**. It supports tenants, property managers, technicians and administrators.
+A property maintenance system for Obs Realty Group, built with **React, ASP.NET Core and PostgreSQL**.
 
-## Task 2 submission and presentation
+- [Live application](https://propcare-sunx.onrender.com)
+- [Group presentation](https://youtu.be/Mp6bIOCUu0U)
+- [Requirements and architecture](docs/REQUIREMENTS.md)
+- [Hosting and deployment](docs/DEPLOYMENT.md)
+- [Test results](docs/AUDIT-2026-10-05.md)
+- [GitHub Actions](https://github.com/ST10445479-ConnorBettridge/INSY7315_PROPCARE_2/actions)
 
-- **Presentation video:** [Watch the group presentation on YouTube](https://youtu.be/Mp6bIOCUu0U).
-- **Live application:** [Open PropCare](https://propcare-sunx.onrender.com).
-- **Requirements and architecture:** [Part 1 requirements mapping and implementation](docs/REQUIREMENTS.md).
-- **Hosting and release process:** [Deployment details and free-plan limits](docs/DEPLOYMENT.md).
-- **Testing and rubric evidence:** [Task 2 audit](docs/AUDIT-2026-10-05.md) and [successful automatic deployment and hosted verification](https://github.com/ST10445479-ConnorBettridge/INSY7315_PROPCARE_2/actions/runs/37353651170).
+## Demo access
 
-Section 9.6 requires **one group member to submit this GitHub repository link on ARC**: https://github.com/ST10445479-ConnorBettridge/INSY7315_PROPCARE_2. The repository contains the source and this README; presentation documentation may be included here. That section does not require a separate Word document or PowerPoint upload.
+The hosted app uses fictional demonstration accounts. The group shares the hosted password privately. Free hosting may take a little time to wake up after inactivity.
 
-The hosted demonstration uses fictional accounts for all four roles. Obtain the hosted demo password privately from the submitting group member; the local password below does not apply to the hosted app. Free hosting can sleep or pause when inactive, so open the live application before presenting. The video provides a recorded demonstration.
-
-## Run on this computer
-
-From `C:\CursorProjects\PropCare`:
-
-```powershell
-npm start
-```
-
-Open **http://127.0.0.1:5124**. If the app is already running, use that address directly. The launcher starts the existing portable PostgreSQL cluster when necessary. Closing the app does not erase its database or photos.
-
-Local configuration is in ignored `.local/settings.json`; PostgreSQL is in `.local/pgdata` and private photos in `.local/uploads`. These contain local credentials and data and must stay out of Git. The older root `.env` belongs to the archived Express implementation and is not read by the active app.
-
-| Demo role | Email |
+| Role | Email |
 | --- | --- |
 | Tenant | sarahwilliams@example.com |
 | Property manager | michael.jacobs@obsrealty.co.za |
 | Technician | johan.vdm@obsrealty.co.za |
 | Administrator | admin@obsrealty.co.za |
 
-The local fictional demo accounts use `PropCare123!`. Newly registered tenants receive no property access until an administrator verifies them and creates a **Tenant link**. Create technician accounts in **Users and roles**, then edit their specialisation under **Technicians**.
+New tenants can register, but an administrator must link them to a property before they can submit maintenance requests.
 
-## Set up another computer
+## Features
 
-Install Node.js 22.12 or newer, the .NET 10 SDK and PostgreSQL 17 or 18. Hosted Supabase uses PostgreSQL 17; the portable local database and container check use 18. Create a database and database user for this application. The portable database and local settings on this computer are intentionally not committed.
+- Tenants report issues, attach photos, track progress, comment, confirm repairs and rate completed work.
+- Managers review requests, assign and schedule technicians, manage their properties and export reports.
+- Technicians accept or reject jobs, update progress, add work notes and photos, and mark repairs complete.
+- Administrators manage users, roles, properties, tenant links, categories and technician details.
+- Notifications and request history are saved in PostgreSQL. Photo access is restricted to authorised users.
 
-```powershell
+## Local development
+
+Install Node.js 22.12 or newer, the .NET 10 SDK and PostgreSQL 17 or 18. Clone the repository and run these commands from its root directory:
+
+```sh
 npm ci
 npm ci --prefix frontend
 dotnet tool restore
 npm run build
 ```
 
-Create `.local/settings.json` using the following structure, with your own database password and a randomly generated signing key of at least 32 bytes:
+Create a PostgreSQL database and an application user. Add `.local/settings.json` with your connection details and a randomly generated signing key of at least 32 bytes:
 
 ```json
 {
@@ -59,78 +54,39 @@ Create `.local/settings.json` using the following structure, with your own datab
 }
 ```
 
-Passwords need at least ten characters, uppercase, lowercase and a number. Run `npm start`. Startup applies the checked-in EF Core migrations. Seeding happens only when the user table is empty; changing `DemoPassword` does not reset existing passwords. An administrator can reset those through the application.
+Use a demo password with at least ten characters, uppercase, lowercase and a number. Keep PostgreSQL running, then run `npm start` and open http://127.0.0.1:5124. Startup applies the database migrations and seeds demo accounts when the user table is empty. Changing `DemoPassword` does not reset existing accounts; an administrator can reset them in the app.
 
-For React development with hot reload, keep the API running and run `npm run dev` in another terminal. Vite serves port 5173 and proxies `/api` to port 5124. Run `npm run build` after edits to update the application served by ASP.NET Core.
+For frontend hot reload, run `npm run dev` in a second terminal. Vite uses port 5173 and proxies API requests to port 5124. Run `npm run build` to update the frontend served by ASP.NET Core.
 
-## Features and structure
+`.local/` contains private settings and local data and is excluded from Git. The archived Express application's `.env` is not used by the current application.
 
-- Tenants register, view linked properties, report issues with photos and urgency, comment, track status, reopen completed work, confirm resolution and rate work before or after closure.
-- Managers see their own property portfolio, tenants and requests; review, assign and schedule work; communicate; close completed requests; and export reports as CSV.
-- Technicians see assigned work, accept or reject jobs, put work on hold, resume, record notes, upload before/after photos and mark completion.
-- Administrators create and edit accounts, roles, properties, tenant links and categories; manage technician skills; reset passwords; deactivate accounts; and configure the organisation name.
-- In-app notifications persist in PostgreSQL. Open views refresh when focused and every 15 seconds while visible.
+## Tests
 
-```text
-frontend/src/                    React views, API client and responsive styles
-backend/PropCare.Api/Controllers HTTP endpoints and role requirements
-backend/PropCare.Api/RequestService.cs  Maintenance business rules
-backend/PropCare.Api/RequestRepository.cs Scoped queries and notification observer
-backend/PropCare.Api/PropCareDb.cs       Relationships and database constraints
-backend/PropCare.Api/Migrations/        Versioned PostgreSQL schema
-scripts/                        API integration tests, browser tests and launcher
-docs/REQUIREMENTS.md             Part 1 mapping, architecture and verification scope
-legacy/express/                  Archived supplied implementation
-prototype/                      Original prototype reference
-```
+Create a separate database named `propcare_test` owned by the application user. Tests use `TEST_DATABASE_CONNECTION`, or derive the connection from the local settings above.
 
-Authentication uses bcrypt hashes, 15-minute JWT access tokens held in memory, and rotating refresh tokens in HttpOnly cookies. The server checks current account permissions and session revocation on authenticated requests. PostgreSQL foreign keys, unique indexes and check constraints protect related records; optimistic concurrency returns a conflict for competing updates. Request transitions, history and in-app notifications save in one transaction.
-
-Photos are authenticated resources outside the web root. The server decodes JPEG, PNG and WebP images, checks size/dimensions, strips metadata and stores a resized JPEG under a generated filename. Local instances use a private directory; cloud instances use a private Supabase Storage bucket through the same authorised API. Storage credentials never reach the browser. Limits are 5 MB per input image, 20 megapixels and ten photos per request. Reference records are archived instead of deleting maintenance history.
-
-## Verify changes
-
-Create a separate `propcare_test` database owned by the application database user. Tests reject database connection strings whose database is not `propcare_test`. On this computer it already exists. Other environments supply `TEST_DATABASE_CONNECTION`; otherwise tests derive it from the local settings.
-
-```powershell
-npm run build
-dotnet ef migrations has-pending-model-changes --project backend/PropCare.Api --configuration Release --no-build
+```sh
 npm test
-# With the application running on port 5124:
+# With the application running:
 npm run test:browser
 npm run test:browser:edge-cases
 npm run test:accessibility
-npm audit
-npm audit --prefix frontend
-dotnet list backend/PropCare.Api package --vulnerable --include-transitive
 ```
 
-The API tests launch their own instance on port 5125. Browser tests use fictional accounts and add uniquely named records to the running demo application; use only a demo environment. Set `PPC_BASE`, `PPC_CHROME` or `DEMO_PASSWORD` to override the browser test URL, Chromium executable or demo password. Screenshots go to ignored `test-results/browser`.
+Browser tests create fictional records in the demo app. Set `DEMO_PASSWORD` to the password you chose during setup. `PPC_BASE` selects another demo URL and `PPC_CHROME` selects the browser executable. Test results and screenshots are saved under ignored `test-results/`.
 
-The full 5 October 2026 audit is in [docs/AUDIT-2026-10-05.md](docs/AUDIT-2026-10-05.md). Twenty API scenarios, 26 workflow checks in both Chrome and Edge, eight browser recovery/keyboard checks, and 73 accessibility/viewport scans pass. Publishing, fresh production bootstrap, database constraints and backup restoration were tested. A local exercise with 1,000 additional properties and 10,000 requests completed 200 reads/writes with zero errors and a 36 ms 95th percentile. Dependency audits report no known findings. These results do not establish hosted uptime or full manual accessibility/device conformance.
+GitHub Actions builds the app and runs database, API, browser, accessibility, dependency and Docker checks. Successful releases from `main` deploy to Render and run checks against the public app. See [test results](docs/AUDIT-2026-10-05.md) and [deployment setup](docs/DEPLOYMENT.md).
 
-`npm run audit:infrastructure` repeats the optional local publishing, load and restore exercise using uniquely named audit databases. It requires PostgreSQL command-line tools and permission to create databases; it never drops or rewrites the application database. Audit databases/backups remain local for inspection.
+## Project layout
 
-## Delivery configuration
+| Directory | Contents |
+| --- | --- |
+| `frontend/src/` | React views, API client and styles |
+| `backend/PropCare.Api/` | Controllers, services, data model and migrations |
+| `scripts/` | Launcher and automated checks |
+| `docs/` | Requirements, testing and deployment notes |
+| `legacy/express/` | Original Express implementation, excluded from the active build |
+| `prototype/` | Original prototype |
 
-The application is hosted at **https://propcare-sunx.onrender.com** using Render's free web service, Supabase PostgreSQL and private Supabase Storage. The public four-role workflow and photo access checks passed on 5 October 2026. See [deployment details](docs/DEPLOYMENT.md) for configuration, free-tier limits and the distinction between a working deployment and long-term uptime evidence.
+## Notices
 
-The GitHub Actions CI workflow builds the required stack against PostgreSQL 17, audits dependencies, checks migrations, runs API scenarios and exercises the browser. High and critical NuGet audit warnings fail the build. API checks also run against a controlled object-storage server to verify private photo requests, storage failures and cleanup after concurrent uploads. After a successful `main` push CI run, the hosted workflow sends the exact tested commit to Render through the `RENDER_DEPLOY_HOOK_URL` secret. It verifies `/api/health` reports that commit and runs the hosted four-role and private-photo checks. `APP_URL` is a repository variable and `HOSTED_DEMO_PASSWORD` is a secret. Render's separate automatic deploy setting stays off to avoid duplicate or untested deploys.
-
-CI also builds the production Docker image in an isolated job, verifies that it runs as a non-root user, creates a maintenance request and private photo, then recreates the application container and restarts PostgreSQL. The check requires the same record, session and photo bytes to remain available. Run `node scripts/container-smoke.mjs` on a machine with Docker to reproduce it. It creates and cleans up only uniquely named test containers, networks and volumes. This verifies the container package and volume configuration; cloud uptime and HTTPS still require the hosted checks.
-
-Hosting needs managed PostgreSQL, HTTPS and configured credentials. Set `ConnectionStrings__PropCare`, `Jwt__Key`, `Storage__SupabaseUrl`, `Storage__ServiceKey`, `Storage__Bucket` and `ASPNETCORE_ENVIRONMENT=Production`. The database connection uses a dedicated application role, private `propcare` schema, `SSL Mode=VerifyFull`, and `Root Certificate=/app/certs/supabase-ca.crt`. The bundled public CA certificate comes from Supabase's certificate distribution endpoint. The storage bucket must remain private with no anonymous read/write policies. `RENDER_GIT_COMMIT` or `RELEASE_SHA` identifies the release. The blueprint seeds fictional demo data; for an empty real deployment, set `SeedDemo=false` and provide `BootstrapAdmin__Email` and `BootstrapAdmin__Password`, then remove the bootstrap password after first startup. Back up both PostgreSQL and private bucket objects.
-
-The selected services cost $0 within their free allowances. Render sleeps after 15 idle minutes, so the first request can take roughly a minute. Supabase includes 500 MB of database space and 1 GB of object storage and can pause after a week of inactivity. Free hosting does not establish a business-hours uptime guarantee. Open the app before a presentation and check the dashboard if a paused project needs resuming. No artificial keep-alive traffic is configured. See [Render free limits](https://render.com/docs/free) and [Supabase pricing](https://supabase.com/pricing).
-
-Only explicitly trusted reverse proxies may forward client IP and HTTPS headers. `Proxy__KnownProxies__0` (and subsequent numbered entries) can configure additional addresses for another hosting environment. Untrusted forwarded headers are ignored. The public Render endpoint was checked for HSTS and other security headers. [Deployment details](docs/DEPLOYMENT.md) reconcile the free hosting architecture with the larger Part 1 plan; they do not claim a separate managed identity provider, private VPC or paid uptime guarantee.
-
-`Dockerfile` and `compose.yaml` are supplied as an alternative packaging path. GitHub CI verifies the production container, including persistence after recreation. Compose expects `POSTGRES_PASSWORD`, `JWT_KEY` and `DEMO_PASSWORD`; it uses persistent database and photo volumes. Do not use `docker compose down -v` if you need to retain that data.
-
-## Source history and notices
-
-The original source history remains intact. `upstream` points to Zulfique's source repository and `origin` to `ST10445479-ConnorBettridge/INSY7315_PROPCARE_2`. The Part 2 integration is grouped into setup, interface, workflow/data, access/administration, and testing/delivery commits. Original authors and timestamps are preserved; new commits record the current integration work. Use feature branches for subsequent changes, review them through pull requests, and check CI before merging to `main`.
-
-The source snapshot had no top-level project licence file. Existing source notices remain, and frontend dependency licence text is included in `frontend/public/third-party-notices.txt`. Package licences also accompany their dependency distributions. The archived Express code is retained for comparison and is not built, tested or deployed by the active workflows.
-
-The submitted presentation is linked at the top of this README. Rehearsal scripts and video-editing files are retained locally and are not needed to run or review the repository.
+The original source history and notices are retained. Frontend dependency notices are included in `frontend/public/third-party-notices.txt`; other package licences accompany their distributions.
