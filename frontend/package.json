@@ -1,0 +1,1 @@
+{"name":"propcare-react","version":"3.0.0","private":true,"type":"module","scripts":{"dev":"vite --host 127.0.0.1","build":"vite build","preview":"vite preview --host 127.0.0.1"},"dependencies":{"lucide-react":"^0.577.0","propcare-wil-task2":"file:..","react":"19.3.0","react-dom":"19.3.0"},"devDependencies":{"@vitejs/plugin-react":"6.1.2","vite":"8.3.2"}}
