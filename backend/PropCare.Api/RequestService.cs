@@ -4,7 +4,7 @@ using SixLabors.ImageSharp.Processing;
 
 namespace PropCare.Api;
 
-public class RequestService(PropCareDb db, IRequestRepository repository, RequestEvents events, IConfiguration config, IWebHostEnvironment env)
+public class RequestService(PropCareDb db, IRequestRepository repository, RequestEvents events, PhotoStore photos, ILogger<RequestService> logger)
 {
     public static string[] Actions(UserAccount user, MaintenanceRequest r) => user.Role switch {
         "tenant" when r.Status is "submitted" or "under-review" => ["cancel"],
@@ -86,7 +86,6 @@ public class RequestService(PropCareDb db, IRequestRepository repository, Reques
         events.Publish(new RequestEvent(r,u,$"{u.Name} rated {r.Title}: {stars}/5."));
         await repository.Save();
     }
-    public string PhotoPath(string id) => Path.Combine(Path.GetFullPath(config["Storage:Path"] ?? Path.Combine(env.ContentRootPath,"../../.local/uploads")), id + ".jpg");
     public async Task Upload(UserAccount u, string id, PhotoInput input)
     {
         var r = await repository.Find(id,u);
@@ -97,8 +96,7 @@ public class RequestService(PropCareDb db, IRequestRepository repository, Reques
         if (bytes.Length > 5 * 1024 * 1024) throw new ApiException(413,"The photo must be 5 MB or smaller.");
         var filename = Path.GetFileNameWithoutExtension(input.Filename);
         var photo = new RequestPhoto { RequestId = id, UserId = u.Id, Kind = input.Kind, Filename = filename[..Math.Min(filename.Length, 116)] + ".jpg" };
-        var path = PhotoPath(photo.Id);
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        using var jpeg = new MemoryStream();
         try {
             var info = Image.Identify(bytes);
             if ((long)info.Width * info.Height > 20_000_000) throw new ApiException(400,"Photo dimensions are too large.");
@@ -107,13 +105,18 @@ public class RequestService(PropCareDb db, IRequestRepository repository, Reques
             using var image = Image.Load(bytes);
             image.Mutate(x => x.AutoOrient().Resize(new ResizeOptions { Size = new Size(1600,1600), Mode = ResizeMode.Max }));
             image.Metadata.ExifProfile = null; image.Metadata.IccProfile = null; image.Metadata.XmpProfile = null;
-            await image.SaveAsJpegAsync(path);
+            await image.SaveAsJpegAsync(jpeg);
         } catch (UnknownImageFormatException) { throw new ApiException(400,"The file is not a supported image."); }
           catch (InvalidImageContentException) { throw new ApiException(400,"The image file is damaged."); }
+        await photos.Save(photo.Id, jpeg.ToArray());
         db.Photos.Add(photo);
         // Advancing the concurrency token protects the ten-photo limit against concurrent uploads.
         r.UpdatedAt = DateTimeOffset.UtcNow;
-        try { await repository.Save(); } catch { File.Delete(path); throw; }
+        try { await repository.Save(); } catch {
+            try { await photos.Delete(photo.Id); }
+            catch (Exception cleanupError) { logger.LogError(cleanupError, "Unable to remove uncommitted photo {PhotoId}", photo.Id); }
+            throw;
+        }
     }
     private void Record(MaintenanceRequest r, UserAccount u, string note)
     {

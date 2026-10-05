@@ -16,6 +16,7 @@ RUN dotnet publish backend/PropCare.Api -c Release --no-restore -o /publish
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 COPY --from=build /publish/ ./
+COPY deployment/supabase-ca.crt /app/certs/supabase-ca.crt
 RUN mkdir -p /app/storage && chown -R app:app /app/storage
 USER app
 ENV ASPNETCORE_HTTP_PORTS=8080 Storage__Path=/app/storage

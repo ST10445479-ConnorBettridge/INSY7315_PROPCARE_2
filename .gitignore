@@ -3,6 +3,7 @@
 .env.*
 !.env.example
 .local/
+supabase/.temp/
 **/wwwroot/
 **/dist/
 TestResults/
