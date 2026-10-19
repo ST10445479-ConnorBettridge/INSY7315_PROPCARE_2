@@ -9,6 +9,16 @@ A property maintenance system for Obs Realty Group, built with **React, ASP.NET 
 - [Test results](docs/AUDIT-2026-10-05.md)
 - [GitHub Actions](https://github.com/ST10445479-ConnorBettridge/INSY7315_PROPCARE_2/actions)
 
+  #  Authors
+
+This project was collaboratively developed by:
+
+**ST10404539 — Neville Kabamba**  
+**ST10403582 — Zulfique Jattiem**  
+**ST10445479 — Connor Bettridge**  
+**ST10283036 — Ayakha Ntsomi**  
+**ST10439005 — Kwanda Zulu**
+
 ## Demo access
 
 The hosted app uses fictional demonstration accounts. The group shares the hosted password privately. Free hosting may take a little time to wake up after inactivity.
