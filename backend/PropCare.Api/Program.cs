@@ -9,6 +9,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
 using PropCare.Api;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
 if (builder.Environment.IsDevelopment())
@@ -23,6 +25,28 @@ builder.Services.AddScoped<IRequestRepository, RequestRepository>();
 builder.Services.AddScoped<IStatusObserver, InAppNotificationObserver>();
 builder.Services.AddScoped<RequestEvents>();
 builder.Services.AddScoped<RequestService>();
+builder.Services.AddHostedService<NotificationEmailWorker>();
+builder.Services.AddOpenApi(options => options.AddDocumentTransformer((document, context, cancellationToken) => {
+    document.Info = new() { Title = "PropCare API", Version = "v1", Description = "Property maintenance API. Sign in at /api/auth/login and send the returned token as Authorization: Bearer <token>. All data is scoped to the authenticated role and property tenancy." };
+    document.Components ??= new();
+    document.Components.SecuritySchemes = new Dictionary<string, IOpenApiSecurityScheme> {
+        ["bearerAuth"] = new OpenApiSecurityScheme { Type = SecuritySchemeType.Http, Scheme = "bearer", BearerFormat = "JWT" }
+    };
+    foreach (var path in document.Paths) {
+        foreach (var operation in path.Value.Operations?.Values.AsEnumerable() ?? Enumerable.Empty<OpenApiOperation>()) {
+            if (!path.Key.StartsWith("/api/auth/") && path.Key is not "/api/health" and not "/api") {
+                operation.Security = [new OpenApiSecurityRequirement { [new OpenApiSecuritySchemeReference("bearerAuth", document)] = [] }];
+                operation.Responses ??= new();
+                operation.Responses.TryAdd("401", new OpenApiResponse { Description = "Sign in with a valid active session." });
+                operation.Responses.TryAdd("403", new OpenApiResponse { Description = "The current role cannot perform this action." });
+            }
+            operation.Responses ??= new();
+            operation.Responses.TryAdd("400", new OpenApiResponse { Description = "Invalid input or invalid maintenance status transition. The JSON message explains the correction." });
+            operation.Responses.TryAdd("409", new OpenApiResponse { Description = "Duplicate or concurrently changed record. Refresh before retrying." });
+        }
+    }
+    return Task.CompletedTask;
+}));
 builder.Services.AddHttpClient<PhotoStore>(client => client.Timeout = TimeSpan.FromSeconds(30));
 builder.Services.AddControllers().ConfigureApiBehaviorOptions(o => o.InvalidModelStateResponseFactory = c =>
     new BadRequestObjectResult(new { message = string.Join(" ", c.ModelState.Values.SelectMany(v => v.Errors).Select(e => string.IsNullOrEmpty(e.ErrorMessage) ? "Invalid input." : e.ErrorMessage)) }));
@@ -87,6 +111,7 @@ app.UseAuthorization();
 app.UseDefaultFiles();
 app.UseStaticFiles(new StaticFileOptions { OnPrepareResponse = c => c.Context.Response.Headers.CacheControl = c.File.Name == "index.html" ? "no-cache" : "public,max-age=3600" });
 app.MapControllers();
+app.MapOpenApi("/api/openapi/{documentName}.json");
 app.MapGet("/api/health", async (PropCareDb db) => await db.Database.CanConnectAsync()
     ? Results.Ok(new { status = "success", database = "PostgreSQL", version = Environment.GetEnvironmentVariable("RELEASE_SHA") ?? Environment.GetEnvironmentVariable("RENDER_GIT_COMMIT") ?? "local" }) : Results.StatusCode(503));
 app.MapGet("/api", () => Results.Ok(new { name = "PropCare", stack = "React / ASP.NET Core / PostgreSQL", resources = new[] { "auth", "requests", "properties", "units", "categories", "technicians", "users", "notifications", "reports", "settings" } }));
@@ -95,7 +120,7 @@ app.MapFallbackToFile("index.html");
 using (var scope = app.Services.CreateScope()) {
     var db = scope.ServiceProvider.GetRequiredService<PropCareDb>();
     if (builder.Configuration.GetValue("Database:ApplyMigrations", true)) await db.Database.MigrateAsync();
-    if (builder.Configuration.GetValue("SeedDemo", app.Environment.IsDevelopment())) await SeedData.Load(db, builder.Configuration, app.Environment.ContentRootPath);
+    if (!app.Environment.IsProduction() && builder.Configuration.GetValue("SeedDemo", app.Environment.IsDevelopment())) await SeedData.Load(db, builder.Configuration, app.Environment.ContentRootPath);
     else await SeedData.BootstrapAdmin(db, builder.Configuration);
 }
 app.Run();

@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 namespace PropCare.Api.Controllers;
 
 [ApiController, Authorize, Route("api")]
-public class AdministrationController(PropCareDb db) : ControllerBase
+public class AdministrationController(PropCareDb db, IConfiguration config) : ControllerBase
 {
     private UserAccount Account => (UserAccount)HttpContext.Items["account"]!;
     private IQueryable<Property> Properties => Account.Role switch {
@@ -141,7 +141,20 @@ public class AdministrationController(PropCareDb db) : ControllerBase
         t.Skill = input.Skill.Trim(); await db.SaveChangesAsync(); return new { message = "Technician saved." };
     }
     [HttpGet("settings")]
-    public async Task<object> Settings() => new { data = await db.Settings.Select(x => new { x.OrgName }).FirstOrDefaultAsync() ?? new { OrgName = "Obs Realty Group" } };
+    public async Task<object> Settings() => new { data = new {
+        orgName = await db.Settings.Select(x => x.OrgName).FirstOrDefaultAsync() ?? "Obs Realty Group",
+        emailEnabled = config.GetValue<bool>("Email:Enabled"),
+        queuedEmails = Account.Role == "admin" ? await db.Notifications.CountAsync(x => x.EmailPending) : 0,
+        failedEmails = Account.Role == "admin" ? await db.Notifications.CountAsync(x => x.EmailAttempts == 5 && x.EmailSentAt == null) : 0
+    } };
+    [HttpPost("notifications/email/retry"), Authorize(Roles = "admin")]
+    public async Task<object> RetryEmail()
+    {
+        if (!config.GetValue<bool>("Email:Enabled")) throw new ApiException(400, "Email delivery is not configured.");
+        var count = await db.Notifications.Where(x => x.EmailAttempts == 5 && x.EmailSentAt == null)
+            .ExecuteUpdateAsync(set => set.SetProperty(x => x.EmailAttempts, 0).SetProperty(x => x.EmailPending, true).SetProperty(x => x.EmailNextAttemptAt, (DateTimeOffset?)null));
+        return new { message = $"Queued {count} failed email notifications for retry." };
+    }
     [HttpPut("settings"), Authorize(Roles = "admin")]
     public async Task<object> SaveSettings(SettingsInput input)
     {

@@ -1,0 +1,68 @@
+.field-label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 19px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy);
+}
+.field-label small {
+  font-size: 11px;
+  font-weight: 400;
+}
+.field-label input,
+.field-label select,
+.field-label textarea,
+.filters select {
+  width: 100%;
+  background: #fff;
+  border: 1px solid #cbd6dd;
+  border-radius: 7px;
+  padding: 12px 13px;
+  color: var(--navy);
+  font-size: 13px;
+  min-height: 43px;
+}
+.field-label textarea {
+  resize: vertical;
+  min-height: 90px;
+  line-height: 1.6;
+}
+.field-label input:disabled {
+  background: #f2f5f6;
+}
+.field-label input[type="file"] {
+  font-size: 12px;
+}
+.demo {
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+  margin-top: 5px;
+}
+.demo summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--muted);
+}
+.demo-roles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 13px 0;
+}
+.demo-roles button {
+  padding: 7px 11px;
+  border: 1px solid var(--line);
+  background: #f5f8f9;
+  border-radius: 5px;
+  font-size: 11px;
+}
+.login-help {
+  margin-top: 30px;
+  font-size: 11px;
+  color: var(--muted);
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}

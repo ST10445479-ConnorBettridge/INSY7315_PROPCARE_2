@@ -7,6 +7,7 @@ import {setTimeout as pause} from 'node:timers/promises';
 // All containers and volumes belong to this isolated run; no existing deployment is touched.
 const name='propcare-smoke-'+Date.now(), image=name+':test';
 const database=name+'-db', application=name+'-app';
+const production=name+'-production';
 const volumes=[name+'-postgres',name+'-photos'];
 const password='Test1!'+randomBytes(16).toString('hex');
 const jwt=randomBytes(48).toString('hex');
@@ -14,9 +15,9 @@ const version=process.env.GITHUB_SHA || 'container-smoke';
 const base='http://127.0.0.1:5129', checks=[];
 function docker(...args){return execFileSync('docker',args,{encoding:'utf8',stdio:['ignore','pipe','pipe'],maxBuffer:16*1024*1024}).trim();}
 function pass(check){checks.push(check);console.log('PASS',check);}
-async function ready(){
+async function ready(url=base){
  for(let i=0;i<90;i++){
-  try{const r=await fetch(base+'/api/health',{signal:AbortSignal.timeout(1500)});if(r.ok)return await r.json();}catch{}
+  try{const r=await fetch(url+'/api/health',{signal:AbortSignal.timeout(1500)});if(r.ok)return await r.json();}catch{}
   await pause(1000);
  }
  throw Error('Container health endpoint did not become ready.');
@@ -26,7 +27,7 @@ async function call(path,token,body){
  assert.ok(r.ok,`${path}: HTTP ${r.status}`);
  const j=await r.json();return j.data??j;
 }
-function launch(){docker('run','-d','--name',application,'--network',name,'-p','127.0.0.1:5129:8080','-v',volumes[1]+':/app/storage','-e','ASPNETCORE_ENVIRONMENT=Production','-e',`ConnectionStrings__PropCare=Host=${database};Database=propcare;Username=propcare;Password=${password}`,'-e','Jwt__Key='+jwt,'-e','SeedDemo=true','-e','DemoPassword='+password,'-e','RELEASE_SHA='+version,image);}
+function launch(){docker('run','-d','--name',application,'--network',name,'-p','127.0.0.1:5129:8080','-v',volumes[1]+':/app/storage','-e','ASPNETCORE_ENVIRONMENT=Staging','-e',`ConnectionStrings__PropCare=Host=${database};Database=propcare;Username=propcare;Password=${password}`,'-e','Jwt__Key='+jwt,'-e','SeedDemo=true','-e','DemoPassword='+password,'-e','RELEASE_SHA='+version,image);}
 try{
  docker('build','-t',image,'.');pass('Production Docker image builds');
  docker('network','create',name);
@@ -48,13 +49,24 @@ try{
  const after=await call(`/requests/${request.id}`,login.token);
  assert.equal(after.request.id,request.id);assert.equal(after.request.title,'Container persistence check');assert.deepEqual(await getPhoto(),bytes);
  pass('Request, session and byte-identical photo survive container recreation and database restart');
+ docker('exec',database,'createdb','-U','propcare','propcare_bootstrap');
+ docker('run','-d','--name',production,'--network',name,'-p','127.0.0.1:5130:8080',
+   '-e','ASPNETCORE_ENVIRONMENT=Production','-e',`ConnectionStrings__PropCare=Host=${database};Database=propcare_bootstrap;Username=propcare;Password=${password}`,
+   '-e','Jwt__Key='+jwt,'-e','SeedDemo=true','-e','DemoPassword='+password,
+   '-e','BootstrapAdmin__Email=bootstrap@example.test','-e','BootstrapAdmin__Password='+password,image);
+ await ready('http://127.0.0.1:5130');
+ const productionLogin=await fetch('http://127.0.0.1:5130/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'bootstrap@example.test',password})});
+ assert.equal(productionLogin.status,200);const productionToken=(await productionLogin.json()).data.token;
+ const productionUsers=await (await fetch('http://127.0.0.1:5130/api/users',{headers:{Authorization:'Bearer '+productionToken}})).json();
+ assert.equal(productionUsers.data.length,1);assert.equal(productionUsers.data[0].email,'bootstrap@example.test');
+ pass('Production ignores SeedDemo=true and creates only the bootstrap administrator');
 }catch(error){
  console.error(error.message.replaceAll(password,'[redacted]').replaceAll(jwt,'[redacted]'));
  try{console.error(docker('logs','--tail','60',application).replaceAll(password,'[redacted]').replaceAll(jwt,'[redacted]'));}catch{}
  process.exitCode=1;
 }finally{
  mkdirSync('test-results/container',{recursive:true});writeFileSync('test-results/container/results.json',JSON.stringify({version,checks,passed:!process.exitCode},null,2));
- for(const container of [application,database])try{docker('rm','-f',container);}catch{}
+ for(const container of [application,production,database])try{docker('rm','-f',container);}catch{}
  for(const volume of volumes)try{docker('volume','rm',volume);}catch{}
  try{docker('network','rm',name);}catch{}
  try{docker('image','rm',image);}catch{}

@@ -1,0 +1,24 @@
+name: Check live application availability
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check application and database health
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+        run: |
+          test -n "$APP_URL" || { echo "Configure APP_URL."; exit 1; }
+          curl --fail --silent --show-error --max-time 90 --retry 2 --retry-all-errors --retry-delay 10 "$APP_URL/api/health" -o /tmp/health.json
+          jq -e '.status == "success" and .database == "PostgreSQL"' /tmp/health.json
+      - name: Record failure and recovery instructions
+        if: failure()
+        run: |
+          echo "### PropCare availability check failed" >> "$GITHUB_STEP_SUMMARY"
+          echo "Check Render runtime logs, database availability and the latest release. Re-run after recovery. Enable GitHub Actions email notifications for this workflow." >> "$GITHUB_STEP_SUMMARY"

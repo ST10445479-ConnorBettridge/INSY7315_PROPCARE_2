@@ -34,13 +34,14 @@ public class RequestRepository(PropCareDb db) : IRequestRepository
 
 public record RequestEvent(MaintenanceRequest Request, UserAccount Actor, string Message);
 public interface IStatusObserver { void Notify(RequestEvent change); }
-public class InAppNotificationObserver(PropCareDb db) : IStatusObserver
+public class InAppNotificationObserver(PropCareDb db, IConfiguration config) : IStatusObserver
 {
     public void Notify(RequestEvent e)
     {
         var recipients = new[] { e.Request.TenantId, e.Request.Property.ManagerId, e.Request.Technician?.UserId };
         foreach (var id in recipients.Where(x => x != null && x != e.Actor.Id).Distinct())
-            db.Notifications.Add(new Notification { UserId = id!, RequestId = e.Request.Id, Title = e.Message });
+            db.Notifications.Add(new Notification { UserId = id!, RequestId = e.Request.Id, Title = e.Message,
+                EmailPending = config.GetValue<bool>("Email:Enabled") });
     }
 }
 public class RequestEvents(IEnumerable<IStatusObserver> observers)

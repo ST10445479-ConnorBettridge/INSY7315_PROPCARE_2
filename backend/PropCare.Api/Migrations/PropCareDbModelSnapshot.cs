@@ -134,6 +134,18 @@ namespace PropCare.Api.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("EmailAttempts")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("EmailNextAttemptAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("EmailPending")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("EmailSentAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<bool>("Read")
                         .HasColumnType("boolean");
 
@@ -153,9 +165,14 @@ namespace PropCare.Api.Migrations
 
                     b.HasIndex("RequestId");
 
+                    b.HasIndex("EmailPending", "EmailNextAttemptAt");
+
                     b.HasIndex("UserId", "Read", "CreatedAt");
 
-                    b.ToTable("Notifications");
+                    b.ToTable("Notifications", t =>
+                        {
+                            t.HasCheckConstraint("CK_Notification_EmailAttempts", "\"EmailAttempts\" BETWEEN 0 AND 5");
+                        });
                 });
 
             modelBuilder.Entity("PropCare.Api.Property", b =>

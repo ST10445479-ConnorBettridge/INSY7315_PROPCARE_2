@@ -101,7 +101,7 @@ async function start(database, seed, storage) {
     windowsHide: true,
     env: {
       ...process.env,
-      ASPNETCORE_ENVIRONMENT: "Production",
+      ASPNETCORE_ENVIRONMENT: seed ? "Staging" : "Production",
       ConnectionStrings__PropCare: connection.replace(
         /Database=[^;]+/i,
         "Database=" + database,

@@ -5,6 +5,7 @@ import { readFileSync, createWriteStream, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { createHmac } from "node:crypto";
 import { createServer } from "node:http";
+import { createServer as createSmtpServer } from "node:net";
 
 const base = "http://127.0.0.1:5125";
 const root = resolve(import.meta.dirname, "..");
@@ -24,6 +25,8 @@ assert.ok(
 const suffix = Date.now();
 const password = "PropCare123!";
 let server, log;
+let smtpServer, smtpPort, rejectEmail = false;
+const emails = [];
 let storageServer, storageUrl, failStorage = false;
 const remoteStorage = process.env.TEST_REMOTE_STORAGE === "true";
 const storedPhotos = new Map();
@@ -53,6 +56,31 @@ async function ok(path, method, body, token, status = 200) {
 }
 before(
   async () => {
+    smtpServer = createSmtpServer(socket => {
+      socket.setEncoding("utf8");
+      socket.on("error", error => {
+        if (!['ECONNRESET', 'EPIPE'].includes(error.code)) throw error;
+      });
+      socket.write("220 localhost PropCare test SMTP\r\n");
+      let buffer = "", data = false, recipient = "", body = [];
+      socket.on("data", chunk => {
+        buffer += chunk;
+        while (buffer.includes("\r\n")) {
+          const end = buffer.indexOf("\r\n"), line = buffer.slice(0, end);
+          buffer = buffer.slice(end + 2);
+          if (data) {
+            if (line === ".") { emails.push({ recipient, body: body.join("\n") }); data = false; socket.write("250 accepted\r\n"); }
+            else body.push(line);
+          } else if (/^EHLO|^HELO/.test(line)) socket.write("250 localhost\r\n");
+          else if (/^RCPT TO:/i.test(line)) { recipient = line.slice(8).trim(); socket.write(rejectEmail ? "451 temporary failure\r\n" : "250 OK\r\n"); }
+          else if (line === "DATA") { data = true; body = []; socket.write("354 send message\r\n"); }
+          else if (line === "QUIT") { socket.end("221 goodbye\r\n"); }
+          else socket.write("250 OK\r\n");
+        }
+      });
+    });
+    await new Promise(resolve => smtpServer.listen(0, "127.0.0.1", resolve));
+    smtpPort = smtpServer.address().port;
     if (remoteStorage) {
       storageServer = createServer(async (req, res) => {
         if (req.headers.authorization !== "Bearer test-storage-key" || req.headers.apikey !== "test-storage-key") { res.writeHead(401).end(); return; }
@@ -92,6 +120,13 @@ before(
           Jwt__Key: "integration-test-signing-key-only-at-least-32-bytes",
           SeedDemo: "true",
           DemoPassword: password,
+          Email__Enabled: "true",
+          Email__Host: "127.0.0.1",
+          Email__Port: String(smtpPort),
+          Email__UseTls: "false",
+          Email__From: "propcare@example.test",
+          Email__PollSeconds: "1",
+          Email__RetrySeconds: "1",
           Storage__Path: resolve(root, ".local/test-uploads"),
           Storage__SupabaseUrl: storageUrl || "",
           Storage__ServiceKey: remoteStorage ? "test-storage-key" : "",
@@ -126,6 +161,7 @@ before(
 after(() => {
   server?.kill();
   storageServer?.close();
+  smtpServer?.close();
   log?.end();
 });
 
@@ -162,6 +198,30 @@ test("PostgreSQL health, authentication and role isolation", async () => {
     health.headers.get("content-security-policy"),
     /script-src 'self'/,
   );
+});
+
+test("OpenAPI documents authentication and the active request endpoints", async () => {
+  const spec = await (await fetch(base + "/api/openapi/v1.json")).json();
+  assert.match(spec.openapi, /^3\./);
+  assert.ok(spec.paths["/api/requests/{id}/status"].post);
+  assert.equal(spec.components.securitySchemes.bearerAuth.scheme, "bearer");
+  assert.ok(spec.paths["/api/requests"].post.security.length);
+  assert.ok(spec.paths["/api/requests"].post.responses["403"]);
+});
+
+test("email notifications survive SMTP failure and retry only to scoped recipients", async () => {
+  const title = "Email retry " + suffix;
+  rejectEmail = true;
+  const units = await ok("/units", "GET", undefined, tokens.tenant);
+  const request = await ok("/requests", "POST", { title, detail: "Controlled SMTP retry check", unitId: units[0].id, categoryId: "plumbing", urgency: "normal" }, tokens.tenant, 201);
+  await new Promise(resolve => setTimeout(resolve, 1800));
+  assert.ok(!emails.some(e => e.body.includes(title)));
+  assert.equal((await ok(`/requests/${request.id}`, "GET", undefined, tokens.tenant)).request.title, title);
+  rejectEmail = false;
+  for (let attempt = 0; attempt < 25 && !emails.some(e => e.body.includes(title)); attempt++) await new Promise(resolve => setTimeout(resolve, 500));
+  const delivered = emails.filter(e => e.body.includes(title));
+  assert.equal(delivered.length, 1);
+  assert.match(delivered[0].recipient, /michael\.jacobs@obsrealty\.co\.za/i);
 });
 
 test("tenant registration cannot choose an elevated role and needs a verified unit", async () => {
@@ -656,6 +716,7 @@ test("all administrative write endpoints reject tenant, manager and technician c
       ["/categories/plumbing", "PUT", { name: "Forbidden" }],
       ["/technicians/T1", "PUT", { userId: "U3", skill: "Forbidden" }],
       ["/settings", "PUT", { orgName: "Forbidden" }],
+      ["/notifications/email/retry", "POST", {}],
     ])
       assert.equal(
         (await call(path, method, body, tokens[role])).status,

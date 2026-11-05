@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Processing;
+using ImageMagick;
 
 namespace PropCare.Api;
 
@@ -94,21 +93,24 @@ public class RequestService(PropCareDb db, IRequestRepository repository, Reques
         byte[] bytes;
         try { bytes = Convert.FromBase64String(input.Data); } catch (FormatException) { throw new ApiException(400,"Invalid photo data."); }
         if (bytes.Length > 5 * 1024 * 1024) throw new ApiException(413,"The photo must be 5 MB or smaller.");
+        var supported = bytes.AsSpan().StartsWith(new byte[] { 0xff, 0xd8, 0xff })
+            || bytes.AsSpan().StartsWith(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 })
+            || (bytes.Length >= 12 && bytes.AsSpan(0, 4).SequenceEqual("RIFF"u8) && bytes.AsSpan(8, 4).SequenceEqual("WEBP"u8));
+        if (!supported) throw new ApiException(400, "Use a JPEG, PNG or WebP image.");
         var filename = Path.GetFileNameWithoutExtension(input.Filename);
         var photo = new RequestPhoto { RequestId = id, UserId = u.Id, Kind = input.Kind, Filename = filename[..Math.Min(filename.Length, 116)] + ".jpg" };
-        using var jpeg = new MemoryStream();
+        byte[] jpeg;
         try {
-            var info = Image.Identify(bytes);
+            var info = new MagickImageInfo(bytes);
             if ((long)info.Width * info.Height > 20_000_000) throw new ApiException(400,"Photo dimensions are too large.");
-            var format = info.Metadata.DecodedImageFormat?.Name;
-            if (format is not ("JPEG" or "PNG" or "WEBP")) throw new ApiException(400,"Use a JPEG, PNG or WebP image.");
-            using var image = Image.Load(bytes);
-            image.Mutate(x => x.AutoOrient().Resize(new ResizeOptions { Size = new Size(1600,1600), Mode = ResizeMode.Max }));
-            image.Metadata.ExifProfile = null; image.Metadata.IccProfile = null; image.Metadata.XmpProfile = null;
-            await image.SaveAsJpegAsync(jpeg);
-        } catch (UnknownImageFormatException) { throw new ApiException(400,"The file is not a supported image."); }
-          catch (InvalidImageContentException) { throw new ApiException(400,"The image file is damaged."); }
-        await photos.Save(photo.Id, jpeg.ToArray());
+            if (info.Format is not (MagickFormat.Jpeg or MagickFormat.Png or MagickFormat.WebP)) throw new ApiException(400,"Use a JPEG, PNG or WebP image.");
+            using var image = new MagickImage(bytes);
+            image.AutoOrient();
+            image.Resize(new MagickGeometry(1600, 1600) { Greater = true });
+            image.Strip();
+            jpeg = image.ToByteArray(MagickFormat.Jpeg);
+        } catch (MagickException) { throw new ApiException(400,"The file is not a valid JPEG, PNG or WebP image."); }
+        await photos.Save(photo.Id, jpeg);
         db.Photos.Add(photo);
         // Advancing the concurrency token protects the ten-photo limit against concurrent uploads.
         r.UpdatedAt = DateTimeOffset.UtcNow;

@@ -20,7 +20,7 @@ services:
       - key: Jwt__Key
         generateValue: true
       - key: SeedDemo
-        value: "true"
+        value: "false"
       - key: DemoPassword
         sync: false
       - key: Storage__SupabaseUrl
