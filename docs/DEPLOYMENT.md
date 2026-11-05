@@ -45,9 +45,9 @@ Failures mark the workflow red and publish recovery instructions. Enable GitHub 
 
 Feature changes go through `develop` and a release PR into `main`. Documentation fixes may go directly through a PR into `main`. Both protected branches require the `verify` and `container` checks; the approval requirement is currently zero.
 
-After a successful main-branch CI run, `deploy.yml` sends the tested commit to Render. It waits for `/api/health` to report that revision, then checks all four roles, private photo access and the maintenance workflow. Results are saved as a GitHub Actions artifact.
+After a successful main-branch CI run, `deploy.yml` sends the tested commit to Render. It waits for `/api/health` to report that revision, then verifies the frontend bundle and OpenAPI contract without creating production records or sending test notifications. Full role and maintenance workflows run in isolated CI; the production SMTP test used controlled recipients belonging to the account owner. Release results are saved as a GitHub Actions artifact.
 
-GitHub needs the `APP_URL` variable, `RENDER_DEPLOY_HOOK_URL` and `HOSTED_DEMO_PASSWORD` secrets, and the `production` environment. Render's separate automatic deployment setting is off because GitHub controls deployment.
+GitHub needs the `APP_URL` variable, `RENDER_DEPLOY_HOOK_URL` secret, and the `production` environment. The read-only release check does not need a demonstration password. Render's separate automatic deployment setting is off because GitHub controls deployment.
 
 [Successful hosted release check, 5 October 2026](https://github.com/ST10445479-ConnorBettridge/INSY7315_PROPCARE_2/actions/runs/37353651170).
 

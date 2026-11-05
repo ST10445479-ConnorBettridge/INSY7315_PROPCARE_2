@@ -81,7 +81,7 @@ npm run test:accessibility
 
 Browser tests create fictional records in the demo app. Set `DEMO_PASSWORD` to the password you chose during setup. `PPC_BASE` selects another demo URL and `PPC_CHROME` selects the browser executable. Test results and screenshots are saved under ignored `test-results/`.
 
-GitHub Actions builds the app and runs database, API, browser, accessibility, dependency and Docker checks. Successful releases from `main` deploy to Render and run checks against the public app. See [test results](docs/AUDIT-2026-10-05.md) and [deployment setup](docs/DEPLOYMENT.md).
+GitHub Actions builds the app and runs database, API, browser, accessibility, dependency and Docker checks. Successful releases from `main` deploy to Render and run read-only checks against the public app. See [test results](docs/AUDIT-2026-10-05.md) and [deployment setup](docs/DEPLOYMENT.md).
 
 ## Project layout
 
