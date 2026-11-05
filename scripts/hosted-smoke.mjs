@@ -4,7 +4,9 @@ import {createHash} from 'node:crypto';
 
 const base=process.env.APP_URL?.replace(/\/$/,'');
 const password=process.env.DEMO_PASSWORD;
-assert.ok(base && password,'Set APP_URL and DEMO_PASSWORD for the isolated demonstration accounts.');
+const readOnly=process.argv.includes('--read-only');
+assert.ok(base,'Set APP_URL to the application to check.');
+if(!readOnly)assert.ok(password,'Set DEMO_PASSWORD for the isolated demonstration accounts.');
 const checks=[];
 const pass=message=>{checks.push(message);console.log('PASS',message);};
 async function call(path,token,body){
@@ -12,13 +14,29 @@ async function call(path,token,body){
   assert.ok(response.ok,`${path}: HTTP ${response.status}`);
   const json=await response.json();return json.data??json;
 }
-let evidence;
+let evidence, passed=false;
 try {
-  const health=await call('/health');assert.equal(health.database,'PostgreSQL');
+  const health=await call('/health');assert.equal(health.database,'PostgreSQL');assert.equal(health.status,'success');
   if(process.env.EXPECTED_SHA)assert.equal(health.version,process.env.EXPECTED_SHA);
   pass('Release responds with PostgreSQL connectivity');
-  const root=await fetch(base);assert.equal(root.status,200);assert.match(await root.text(),/id="root"/);
-  pass('React application is served');
+  const root=await fetch(base,{signal:AbortSignal.timeout(20000)});assert.equal(root.status,200);
+  const html=await root.text();assert.match(html,/id="root"/);
+  const script=html.match(/src="([^"]+\.js)"/);
+  assert.ok(script,'React entry point must reference a JavaScript bundle');
+  const assetUrl=new URL(script[1],base+'/');
+  assert.equal(assetUrl.origin,new URL(base).origin,'Application bundle must use the same origin');
+  const asset=await fetch(assetUrl,{signal:AbortSignal.timeout(20000)});
+  assert.equal(asset.status,200,'React bundle must be available');
+  assert.match(asset.headers.get('content-type') || '',/javascript/,'React bundle must not fall back to an HTML error page');
+  pass('React entry point and JavaScript bundle are served');
+  const specResponse=await fetch(base+'/api/openapi/v1.json',{signal:AbortSignal.timeout(20000)});
+  assert.equal(specResponse.status,200,'OpenAPI specification must be served');
+  const spec=await specResponse.json();assert.match(spec.openapi,/^3\./);
+  assert.ok(spec.paths?.['/api/requests']?.post,'Maintenance creation endpoint must be documented');
+  assert.equal(spec.components?.securitySchemes?.bearerAuth?.scheme,'bearer');
+  pass('OpenAPI authentication and maintenance endpoints are available');
+  evidence={base,version:health.version};
+  if(!readOnly){
   const users={};
   for(const [role,email] of Object.entries({tenant:'sarahwilliams@example.com',manager:'michael.jacobs@obsrealty.co.za',technician:'johan.vdm@obsrealty.co.za',admin:'admin@obsrealty.co.za',other:'priya.naidoo@example.com'}))users[role]=(await call('/auth/login',null,{email,password})).token;
   await call('/users',users.admin);await call('/reports',users.manager);
@@ -42,7 +60,10 @@ try {
   assert.equal(closed.request.status,'closed');assert.equal(closed.rating,5);
   pass('Tenant → manager → technician → tenant closure and rating succeed');
   evidence={base,version:health.version,requestId:request.id,photoId:detail.photos[0].id,photoSha256:createHash('sha256').update(bytes).digest('hex')};
+  }
+  passed=true;
 } finally {
-  mkdirSync('test-results/hosted',{recursive:true});
-  writeFileSync('test-results/hosted/results.json',JSON.stringify({checkedAt:new Date().toISOString(),checks,evidence},null,2));
+  const output=readOnly?'test-results/hosted-read-only':'test-results/hosted';
+  mkdirSync(output,{recursive:true});
+  writeFileSync(output+'/results.json',JSON.stringify({checkedAt:new Date().toISOString(),mode:readOnly?'read-only':'workflow',passed,checks,evidence},null,2));
 }

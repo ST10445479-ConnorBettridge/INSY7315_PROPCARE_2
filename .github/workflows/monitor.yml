@@ -10,13 +10,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Check application and database health
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check database frontend and API availability without creating records
         env:
           APP_URL: ${{ vars.APP_URL }}
         run: |
-          test -n "$APP_URL" || { echo "Configure APP_URL."; exit 1; }
-          curl --fail --silent --show-error --max-time 90 --retry 2 --retry-all-errors --retry-delay 10 "$APP_URL/api/health" -o /tmp/health.json
-          jq -e '.status == "success" and .database == "PostgreSQL"' /tmp/health.json
+          node scripts/hosted-smoke.mjs --read-only
       - name: Record failure and recovery instructions
         if: failure()
         run: |

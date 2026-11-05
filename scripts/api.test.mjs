@@ -1,6 +1,7 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { spawn, execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { readFileSync, createWriteStream, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { createHmac } from "node:crypto";
@@ -31,6 +32,7 @@ let storageServer, storageUrl, failStorage = false;
 const remoteStorage = process.env.TEST_REMOTE_STORAGE === "true";
 const storedPhotos = new Map();
 const tokens = {};
+const execFileAsync = promisify(execFile);
 async function call(path, method = "GET", body, token, cookie) {
   const r = await fetch(base + "/api" + path, {
     method,
@@ -207,6 +209,37 @@ test("OpenAPI documents authentication and the active request endpoints", async 
   assert.equal(spec.components.securitySchemes.bearerAuth.scheme, "bearer");
   assert.ok(spec.paths["/api/requests"].post.security.length);
   assert.ok(spec.paths["/api/requests"].post.responses["403"]);
+});
+
+test("read-only release checks reject a broken frontend and leave maintenance records unchanged", async () => {
+  const args = [resolve(root, "scripts/hosted-smoke.mjs"), "--read-only"];
+  const env = { ...process.env, DEMO_PASSWORD: "", EXPECTED_SHA: "" };
+  let brokenBundle = false;
+  const brokenFrontend = createServer((request, response) => {
+    if (request.url === "/api/health") {
+      response.writeHead(200, { "Content-Type": "application/json" });
+      response.end(JSON.stringify({ status: "success", database: "PostgreSQL", version: "fixture" }));
+    } else {
+      response.writeHead(200, { "Content-Type": "text/html" });
+      response.end(brokenBundle && request.url === "/"
+        ? '<html><div id="root"></div><script src="/assets/missing.js"></script></html>'
+        : "<html>Application unavailable</html>");
+    }
+  });
+  await new Promise(resolve => brokenFrontend.listen(0, "127.0.0.1", resolve));
+  try {
+    await assert.rejects(execFileAsync(process.execPath, args, {
+      cwd: root, env: { ...env, APP_URL: `http://127.0.0.1:${brokenFrontend.address().port}` }
+    }), error => error.code === 1);
+    brokenBundle = true;
+    await assert.rejects(execFileAsync(process.execPath, args, {
+      cwd: root, env: { ...env, APP_URL: `http://127.0.0.1:${brokenFrontend.address().port}` }
+    }), error => error.code === 1);
+  } finally { await new Promise(resolve => brokenFrontend.close(resolve)); }
+  const before = await ok("/requests/overview", "GET", undefined, tokens.tenant);
+  const result = await execFileAsync(process.execPath, args, { cwd: root, env: { ...env, APP_URL: base } });
+  assert.match(result.stdout, /OpenAPI authentication and maintenance endpoints are available/);
+  assert.equal((await ok("/requests/overview", "GET", undefined, tokens.tenant)).total, before.total);
 });
 
 test("email notifications survive SMTP failure and retry only to scoped recipients", async () => {

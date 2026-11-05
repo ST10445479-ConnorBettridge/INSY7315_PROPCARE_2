@@ -1,7 +1,7 @@
 name: PropCare CI
 on:
   push:
-    branches: [main, develop, "feature/**", "fix/**"]
+    branches: [main, develop, "feature/**", "fix/**", "task3-*"]
   pull_request:
     branches: [main, develop]
   workflow_dispatch:
