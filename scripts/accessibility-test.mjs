@@ -160,13 +160,22 @@ try {
     }
     for (const width of [320, 390, 768]) {
       await page.setViewport({ width, height: 900 });
-      for (const route of [
-        "overview",
-        "requests",
-        role === "tenant" ? "report" : role === "admin" ? "users" : "profile",
-      ]) {
+      for (const route of routes) {
         await page.goto(base + "/#/" + route);
         await scan(page, role + "-" + route + "-" + width);
+      }
+      await page.goto(base + "/#/requests");
+      await settled(page);
+      await page.click(".request-card");
+      await page.waitForSelector(".detail-grid");
+      await scan(page, role + "-detail-" + width);
+      if (role === "admin") {
+        await page.goto(base + "/#/properties");
+        await settled(page);
+        await page.evaluate(() => [...document.querySelectorAll("button")].find(e => e.textContent.includes("Add property")).click());
+        await page.waitForSelector("dialog input[name=name]");
+        await scan(page, "admin-property-dialog-" + width);
+        await page.keyboard.press("Escape");
       }
     }
     await context.close();

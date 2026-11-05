@@ -75,12 +75,13 @@ jobs:
   container:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    environment: staging
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Verify production container and persistent storage
+      - name: Verify isolated staging container and persistent storage
         run: node scripts/container-smoke.mjs
       - uses: actions/upload-artifact@v4
         if: always()

@@ -1,0 +1,98 @@
+.login {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1.04fr 1fr;
+  background: #fff;
+}
+.login-story {
+  background: var(--navy);
+  color: #fff;
+  padding: 52px 11% 36px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+.login-story:after {
+  content: "";
+  position: absolute;
+  width: 540px;
+  height: 540px;
+  border-radius: 50%;
+  border: 1px solid #294254;
+  bottom: -330px;
+  right: -200px;
+  box-shadow:
+    0 0 0 80px #20394b44,
+    0 0 0 160px #20394b22;
+  pointer-events: none;
+}
+.login-story > div {
+  position: relative;
+  z-index: 1;
+  margin: 60px 0;
+}
+.login-story .eyebrow {
+  color: #83c7b7;
+}
+.login-story h1 {
+  font-size: clamp(40px, 4.7vw, 67px);
+  line-height: 1.12;
+  letter-spacing: -2.5px;
+  margin-bottom: 26px;
+}
+.login-story h1 em {
+  font-style: normal;
+  color: #93ddc8;
+}
+.login-story p:not(.eyebrow) {
+  color: #c1cfd9;
+  font-size: 15px;
+}
+.login-story small {
+  color: #96aab9;
+}
+.story-card {
+  margin-top: 38px;
+  padding: 19px 0;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  border-top: 1px solid #365060;
+}
+.story-card p {
+  margin: 5px 0 0;
+  font-size: 13px !important;
+}
+.story-icon {
+  padding: 12px;
+  background: #244c48;
+  border-radius: 10px;
+  color: #9fe4cd;
+}
+.story-card strong {
+  font-size: 13px;
+}
+.login-form {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 45px;
+}
+.login-form > div {
+  width: 100%;
+  max-width: 390px;
+}
+.login-form h2 {
+  font-size: 32px;
+  margin-bottom: 10px;
+}
+.login-form form {
+  margin-top: 27px;
+}
+.login-form .btn {
+  width: 100%;
+  margin-top: 7px;
+}

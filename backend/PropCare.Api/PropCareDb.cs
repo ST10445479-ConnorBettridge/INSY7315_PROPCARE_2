@@ -40,6 +40,8 @@ public class PropCareDb(DbContextOptions<PropCareDb> options) : DbContext(option
         b.Entity<RequestRating>().ToTable(t => t.HasCheckConstraint("CK_Rating_Stars", "\"Stars\" BETWEEN 1 AND 5"));
         b.Entity<RequestPhoto>().ToTable(t => t.HasCheckConstraint("CK_Photo_Kind", "\"Kind\" IN ('issue','before','after')"));
         b.Entity<Notification>().HasIndex(x => new { x.UserId, x.Read, x.CreatedAt });
+        b.Entity<Notification>().HasIndex(x => new { x.EmailPending, x.EmailNextAttemptAt });
+        b.Entity<Notification>().ToTable(t => t.HasCheckConstraint("CK_Notification_EmailAttempts", "\"EmailAttempts\" BETWEEN 0 AND 5"));
         b.Entity<RefreshSession>().HasIndex(x => x.TokenHash).IsUnique();
         // Keep maintenance records even when an account or reference record is archived.
         foreach (var fk in b.Model.GetEntityTypes().SelectMany(x => x.GetForeignKeys())) fk.DeleteBehavior = DeleteBehavior.Restrict;

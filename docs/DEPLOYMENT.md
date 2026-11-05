@@ -21,9 +21,23 @@ Set these environment variables on the Render service:
 - `Jwt__Key`: a randomly generated signing key of at least 32 bytes.
 - `Storage__SupabaseUrl`, `Storage__ServiceKey` and `Storage__Bucket`: private storage connection.
 - `ASPNETCORE_ENVIRONMENT=Production`.
-- `SeedDemo=true` and `DemoPassword`: for an empty demonstration database. Existing account passwords are not reset by changing this value.
+- `SeedDemo=false`. Production ignores demo seeding even if an older environment value remains true. Existing records and passwords are preserved.
 
-Keep credentials out of source control. For an empty non-demo deployment, use `SeedDemo=false` with `BootstrapAdmin__Email` and `BootstrapAdmin__Password`; remove the bootstrap password after the first startup.
+Keep credentials out of source control. For an empty production deployment, set `BootstrapAdmin__Email` and `BootstrapAdmin__Password`; remove the bootstrap password after the first startup. Isolated Development, Testing and Staging instances may explicitly enable demo seeding.
+
+## Email updates
+
+Set `Email__Enabled=true`, `Email__Host`, `Email__Port` (normally 587), `Email__From`, `Email__Username` and `Email__Password` in Render. TLS is enabled by default (`Email__UseTls=true`); disable it only for an isolated local SMTP test server. No email credentials belong in the repository.
+
+Request events save the in-app notification and pending email in the same database transaction. A background worker claims committed messages, sends them via SMTP and records delivery. Failed attempts use exponential backoff and stop after five attempts. Admin Settings shows queued and exhausted counts and offers a retry action. Disabled accounts are skipped. Delivery is at least once: an SMTP acceptance followed by a database failure can cause a repeated email after recovery.
+
+The integration is tested against an isolated SMTP server, including temporary delivery failure. Actual inbox delivery requires the workspace's SMTP credentials and sender configuration. In-app updates continue when email is disabled.
+
+## Staging and monitoring
+
+The `container` CI job runs in the GitHub `staging` environment. Each run creates a private Docker network, disposable PostgreSQL database and application container using the exact checked-out revision. It checks the real image, private photos and persistence through recreation, then checks a separate Production instance to prove demo data cannot be seeded. These resources are destroyed after the run; this is an ephemeral staging environment, not a permanent public staging URL.
+
+`monitor.yml` checks the public database-aware health endpoint every 15 minutes and can also be dispatched manually. Failures mark the workflow red and publish recovery instructions. Enable GitHub Actions email notifications for the workflow to receive alerts outside Render/Supabase dashboards. GitHub scheduled runs are best effort; they do not establish an uptime guarantee or replace the recommended always-on hosting upgrade.
 
 ## Releases
 

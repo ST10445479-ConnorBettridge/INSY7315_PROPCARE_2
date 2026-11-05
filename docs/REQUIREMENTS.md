@@ -28,11 +28,13 @@ flowchart LR
   SERVICE --> EVENTS[Request events and notification observer]
   REPO --> EF[EF Core unit of work]
   EVENTS --> EF
+  DB --> MAIL[Background email delivery]
+  MAIL --> SMTP[Configured SMTP server]
   EF --> DB[(PostgreSQL)]
   SERVICE --> FILES[Private photo storage]
 ```
 
-The Repository pattern centralises request ownership checks. The Observer pattern adds in-app notifications to the same EF unit of work as the request transition and audit history. They commit together; an exception prevents a partial database save. Photo writes are cleaned up if the database save fails. Local photos use a private directory; hosted photos use a private Supabase bucket. Backups include both the database and photos.
+The Repository pattern centralises request ownership checks. The Observer pattern adds in-app notifications to the same EF unit of work as the request transition and audit history. They commit together; an exception prevents a partial database save. When email is enabled, the same notification records also hold pending delivery state. A background worker claims committed items and performs SMTP delivery with bounded retries; mail failure does not undo the maintenance change. Photo writes are cleaned up if the database save fails. Local photos use a private directory; hosted photos use a private Supabase bucket. Backups include both the database and photos.
 
 Core entities are users, properties, tenant-unit links, categories, technicians, requests, comments, status history, photos, ratings, notifications, refresh sessions and workspace settings. Each request retains its original tenancy, enforced by a composite foreign key across unit ID, property ID and tenant ID. Active unit names are unique within a property. A request has at most one rating. Referenced records use restrictive foreign keys and archive flags. PostgreSQL `xmin` provides optimistic concurrency for requests and refresh sessions.
 
@@ -56,9 +58,9 @@ erDiagram
 
 ## Verification and limits
 
-- **Security:** hashed passwords, server role/object checks, parameterised queries, account lockout, rate limits, rotating refresh cookies, revocation, input limits, image decoding and security headers are implemented. This is not a penetration-test certification. Email verification, password-recovery email, external push/email delivery and malware scanning are not implemented; admin password reset and in-app notifications are available.
+- **Security:** hashed passwords, server role/object checks, parameterised queries, account lockout, rate limits, rotating refresh cookies, revocation, input limits, image decoding and security headers are implemented. This is not a penetration-test certification. Email verification, password-recovery email, external push and malware scanning are not implemented. SMTP request notifications are implemented with a persistent queue and bounded retries; actual inbox delivery requires production SMTP configuration. Admin password reset and in-app notifications remain available.
 - **Performance and scale:** paged request search, full dashboard/report aggregates and scheduled-work queries operate over the complete authorised dataset. The older unpaged `/requests` endpoint remains capped at 500 for compatibility; the UI no longer relies on it. Notifications show the latest 100. A local benchmark with 1,000 added properties and 10,000 requests completed 160 reads and 40 creates with a 36 ms 95th percentile and zero errors. Shared photo storage is implemented. Production load/soak tests and hosted measurements remain necessary for the 5,000-property scaling plan.
-- **Usability and accessibility:** 73 automated page/viewport scans pass at desktop, 768, 390 and 320 pixels, including contrast checks. Keyboard login, dialog focus and recovery paths pass. Chrome and Edge workflows pass. A first-time-user study, manual screen-reader audit, previous-major-version checks and Safari/physical Android tests remain outstanding.
+- **Usability and accessibility:** 145 automated page/viewport scans passed locally on 5 November 2026 at desktop, 768, 390 and 320 pixels, including contrast checks. Keyboard login, dialog focus and recovery paths pass. Chrome and Edge workflows pass. A first-time-user study, manual screen-reader audit, previous-major-version checks and Safari/physical Android tests remain outstanding.
 - **Availability and hosting:** production-mode publishing, new-database bootstrap, private files and local database/photo restore are verified. GitHub runs the production Docker persistence check. The live Render service connects to Supabase PostgreSQL using verified TLS and stores photos in a private object bucket; the public role workflow and photo access checks pass. [DEPLOYMENT.md](DEPLOYMENT.md) reconciles the chosen free architecture with Part 1 and states why its idle sleeping/pausing cannot establish the proposed 99% business-hours uptime.
 - **GitHub:** existing history is preserved and the destination repository is published. Build, audits, migration checks, API, browser, recovery, accessibility and Docker checks run in CI. Protected feature-to-develop and develop-to-main pull requests retain their check results. The deployment workflow sends the tested main commit to Render and checks both its identity and hosted functionality; consult Actions for each run's result.
 

@@ -15,7 +15,7 @@
   },
   "devDependencies": {
     "@axe-core/puppeteer": "^4.13.0",
-    "puppeteer": "25.12.0"
+    "puppeteer": "25.16.0"
   },
   "engines": {
     "node": ">=22.12"
