@@ -4,6 +4,7 @@ A property maintenance system for Obs Realty Group, built with **React, ASP.NET 
 
 - [Live application](https://propcare-sunx.onrender.com)
 - [Group presentation](https://youtu.be/Mp6bIOCUu0U)
+- [EXPO PowerPoint](docs/PropCare_Expo.pptx)
 - [Requirements and architecture](docs/REQUIREMENTS.md)
 - [Hosting and deployment](docs/DEPLOYMENT.md)
 - [User guide](docs/USER-GUIDE.md)
