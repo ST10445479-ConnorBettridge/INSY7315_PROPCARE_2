@@ -12,9 +12,11 @@ A property maintenance system for Obs Realty Group, built with **React, ASP.NET 
 - [Test results](docs/AUDIT-2026-10-05.md)
 - [GitHub Actions](https://github.com/ST10445479-ConnorBettridge/INSY7315_PROPCARE_2/actions)
 
+The submission source is maintained on [main](https://github.com/ST10445479-ConnorBettridge/INSY7315_PROPCARE_2/tree/main). See the [feedback response](docs/TASK3-CHANGES.md) for verification results and remaining submission requirements.
+
 ## Demo access
 
-The hosted app uses fictional demonstration accounts. The group shares the hosted password privately. Free hosting may take a little time to wake up after inactivity.
+The hosted app uses fictional demonstration accounts. The group shares the hosted password privately. Render uses paid, always-on compute for the EXPO; the database remains on Supabase's free plan.
 
 | Role | Email |
 | --- | --- |
@@ -32,7 +34,7 @@ New tenants can register, but an administrator must link them to a property befo
 - Technicians accept or reject jobs, update progress, add work notes and photos, and mark repairs complete.
 - Administrators manage users, roles, properties, tenant links, categories and technician details.
 - Notifications and request history are saved in PostgreSQL. Photo access is restricted to authorised users.
-- Optional SMTP email updates are queued with the request transaction and retried independently. Administrators can see delivery counts and retry exhausted messages in Settings.
+- SMTP email updates are enabled in production, queued with the request transaction and retried independently. Real inbox delivery was verified on 5 November 2026. Administrators can see delivery counts and retry exhausted messages in Settings.
 - [OpenAPI documentation](https://propcare-sunx.onrender.com/api/openapi/v1.json) describes the active endpoints and authentication.
 
 ## Local development
@@ -79,7 +81,7 @@ npm run test:accessibility
 
 Browser tests create fictional records in the demo app. Set `DEMO_PASSWORD` to the password you chose during setup. `PPC_BASE` selects another demo URL and `PPC_CHROME` selects the browser executable. Test results and screenshots are saved under ignored `test-results/`.
 
-GitHub Actions builds the app and runs database, API, browser, accessibility, dependency and Docker checks. Successful releases from `main` deploy to Render and run checks against the public app. See [test results](docs/AUDIT-2026-10-05.md) and [deployment setup](docs/DEPLOYMENT.md).
+GitHub Actions builds the app and runs database, API, browser, accessibility, dependency and Docker checks. Successful releases from `main` deploy to Render and run read-only checks against the public app. See [test results](docs/AUDIT-2026-10-05.md) and [deployment setup](docs/DEPLOYMENT.md).
 
 ## Project layout
 

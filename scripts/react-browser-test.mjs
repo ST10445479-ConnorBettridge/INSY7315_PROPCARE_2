@@ -174,6 +174,19 @@ try {
   pass("tenant confirms then rates completed work");
   await shot(tenant, "request-closed");
   const admin = await login("admin");
+  for (const [role, rolePage, instruction] of [
+    ["tenant", tenant, "Report and track a repair"],
+    ["manager", manager, "Review and assign maintenance"],
+    ["technician", tech, "Complete an assigned job"],
+    ["admin", admin, "Set up accounts and properties"],
+  ]) {
+    await nav(rolePage, "help", "Help and support");
+    await text(rolePage, instruction);
+    assert.equal(await rolePage.$$eval(".panel ol", rows => rows.length), 1);
+    await rolePage.click("summary");
+    assert.equal(await rolePage.$eval("details", e => e.open), true);
+    pass(role + " help shows the correct role guide and working questions");
+  }
   for (const [page, heading] of [
     ["users", "People and permissions"],
     ["properties", "Your property portfolio"],

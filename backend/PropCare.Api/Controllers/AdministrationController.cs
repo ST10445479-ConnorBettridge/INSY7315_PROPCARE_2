@@ -163,7 +163,18 @@ public class AdministrationController(PropCareDb db, IConfiguration config) : Co
         s.OrgName = input.OrgName.Trim(); await db.SaveChangesAsync(); return new { message = "Settings saved." };
     }
     [HttpGet("notifications")]
-    public async Task<object> Notifications() => new { data = await db.Notifications.Where(x => x.UserId == Account.Id).OrderByDescending(x => x.CreatedAt).Take(100).Select(x => new { x.Id, x.RequestId, x.Title, x.Read, x.CreatedAt }).ToListAsync() };
+    public async Task<object> Notifications([FromQuery] bool unreadOnly = false) => new { data = await db.Notifications
+        .Where(x => x.UserId == Account.Id && (!unreadOnly || !x.Read))
+        .OrderByDescending(x => x.CreatedAt).ThenByDescending(x => x.Id).Take(100)
+        .Select(x => new { x.Id, x.RequestId, x.Title, x.Read, x.CreatedAt }).ToListAsync() };
+    [HttpPost("notifications/{id:int}/read")]
+    public async Task<object> ReadNotification(int id)
+    {
+        var updated = await db.Notifications.Where(x => x.Id == id && x.UserId == Account.Id)
+            .ExecuteUpdateAsync(x => x.SetProperty(n => n.Read, true));
+        if (updated == 0) throw new ApiException(404, "Notification not found.");
+        return new { message = "Notification marked as read." };
+    }
     [HttpPost("notifications/read")]
     public async Task<object> ReadNotifications() { await db.Notifications.Where(x => x.UserId == Account.Id && !x.Read).ExecuteUpdateAsync(x => x.SetProperty(n => n.Read,true)); return new { message = "Notifications marked as read." }; }
     private static void ValidateRole(string role) { if (!Domain.Roles.Contains(role)) throw new ApiException(400,"Choose a valid role."); }

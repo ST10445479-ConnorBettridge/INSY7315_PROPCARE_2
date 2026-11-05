@@ -1,0 +1,16 @@
+.notification > div {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.notification > .btn {
+  flex-shrink: 0;
+}
+@media (max-width: 640px) {
+  .notification {
+    flex-wrap: wrap;
+  }
+  .notification > .btn {
+    margin-left: 32px;
+  }
+}

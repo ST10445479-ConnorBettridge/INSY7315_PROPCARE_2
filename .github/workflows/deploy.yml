@@ -45,14 +45,13 @@ jobs:
           done
           echo "The tested release did not become healthy in time."
           exit 1
-      - name: Verify the hosted role workflow and private photo access
+      - name: Verify the hosted frontend and API without creating test records
         env:
           APP_URL: ${{ vars.APP_URL }}
           EXPECTED_SHA: ${{ github.event.workflow_run.head_sha }}
-          DEMO_PASSWORD: ${{ secrets.HOSTED_DEMO_PASSWORD }}
-        run: node scripts/hosted-smoke.mjs
+        run: npm run test:hosted:read-only
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: hosted-release-evidence
-          path: test-results/hosted/
+          path: test-results/hosted-read-only/

@@ -22,7 +22,8 @@ Tokens are checked against their active server session and current account role.
 | `POST /api/requests/{id}/photos` | Authorised participant; filename, kind and base64 data | HTTP 201; private photo metadata is visible in request detail |
 | `GET /api/requests/{id}/photos/{photoId}` | Authorised participant | JPEG bytes; never a public storage URL |
 | `POST /api/requests/{id}/rate` | Reporting tenant after completion/closure; stars from 1 to 5 | Confirmation; one rating per request |
-| `GET /api/notifications` | Current account only | Latest 100 in-app notifications |
+| `GET /api/notifications` | Current account only; optional `unreadOnly=true` filters before the limit | Latest 100 matching in-app notifications |
+| `POST /api/notifications/{id}/read` | Current account's notification only | Marks one notification read; repeating the call is safe; inaccessible IDs return 404 |
 | `POST /api/notifications/read` | Current account only | Marks the account's notifications read |
 | `POST /api/notifications/email/retry` | Administrator, with SMTP enabled | Requeues exhausted email deliveries |
 | `GET /api/settings` | Authenticated; email queue counts visible to administrator | Organisation, email configuration state and queue counts |

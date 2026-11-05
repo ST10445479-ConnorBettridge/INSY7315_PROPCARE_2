@@ -73,6 +73,7 @@ try {
         "properties",
         "notifications",
         "profile",
+        "help",
       ],
     ],
     [
@@ -87,6 +88,7 @@ try {
         "reports",
         "notifications",
         "profile",
+        "help",
       ],
     ],
     [
@@ -99,6 +101,7 @@ try {
         "schedule",
         "notifications",
         "profile",
+        "help",
       ],
     ],
     [
@@ -116,6 +119,7 @@ try {
         "settings",
         "notifications",
         "profile",
+        "help",
       ],
     ],
   ]) {

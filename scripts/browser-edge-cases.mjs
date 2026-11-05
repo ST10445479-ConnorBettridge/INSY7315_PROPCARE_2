@@ -180,6 +180,36 @@ try {
   await manager.type("input[name=password]", password);
   await click(manager, "Sign in to PropCare");
   await manager.waitForSelector("#main");
+  await manager.goto(base + "/#/notifications");
+  await manager.waitForSelector('input[type="checkbox"]');
+  const unreadLoaded = manager.waitForResponse(response => response.url().endsWith('/api/notifications?unreadOnly=true') && response.ok());
+  await manager.click('input[type="checkbox"]');
+  await unreadLoaded;
+  await manager.waitForFunction(() => !document.querySelector('.loading'));
+  const notificationTitle = "Retry audit " + suffix;
+  const notificationHandle = await manager.waitForFunction(title => [...document.querySelectorAll('.notification')].find(e => e.textContent.includes(title))?.dataset.notificationId || false, {}, notificationTitle);
+  const notificationId = await notificationHandle.jsonValue();
+  let failNotification = true;
+  await manager.setRequestInterception(true);
+  manager.on("request", request => {
+    if (failNotification && request.method() === "POST" && /\/notifications\/\d+\/read$/.test(request.url())) {
+      failNotification = false;
+      request.respond({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Simulated notification update failure" }) });
+    } else request.continue();
+  });
+  const readNotification = async () => {
+    await manager.waitForSelector(`[data-notification-id="${notificationId}"] button:not(:disabled)`, { visible: true });
+    await manager.click(`[data-notification-id="${notificationId}"] button`);
+  };
+  await readNotification();
+  await text(manager, "Simulated notification update failure");
+  assert.ok(await manager.evaluate(title => [...document.querySelectorAll('.notification.unread')].some(e => e.textContent.includes(title)), notificationTitle));
+  await readNotification();
+  await manager.waitForFunction(id => !document.querySelector('.loading') && !document.querySelector(`[data-notification-id="${id}"]`), {}, notificationId);
+  assert.equal(await manager.$eval('input[type="checkbox"]', e => document.activeElement === e), true);
+  await manager.click('input[type="checkbox"]');
+  await manager.waitForSelector(`[data-notification-id="${notificationId}"]:not(.unread)`);
+  pass("notification filtering and individual read updates recover from a failed request");
   await manager.goto(base + "/#/reports");
   await manager.waitForSelector("progress");
   await manager.evaluate(() => {

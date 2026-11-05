@@ -1,0 +1,12 @@
+# Routes review requests by responsibility after the invited collaborators accept.
+# Ownership routes review; it does not assign commit authorship.
+* @ST10445479-ConnorBettridge
+/backend/ @NevilleKabamba
+/frontend/ @zulfiquejattiem
+/docs/ @ST10283036
+/.github/workflows/ @TreehouseLefan
+/deployment/ @TreehouseLefan
+/Dockerfile @TreehouseLefan
+/compose.yaml @TreehouseLefan
+/render.yaml @TreehouseLefan
+/scripts/ @NevilleKabamba @zulfiquejattiem

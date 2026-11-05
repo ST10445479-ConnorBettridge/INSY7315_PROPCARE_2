@@ -11,6 +11,7 @@
     "test:browser": "node scripts/react-browser-test.mjs",
     "test:browser:edge-cases": "node scripts/browser-edge-cases.mjs",
     "test:accessibility": "node scripts/accessibility-test.mjs",
+    "test:hosted:read-only": "node scripts/hosted-smoke.mjs --read-only",
     "audit:infrastructure": "dotnet publish backend/PropCare.Api -c Release -o .local/publish && node scripts/infrastructure-audit.mjs"
   },
   "devDependencies": {
