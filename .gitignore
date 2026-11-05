@@ -32,6 +32,11 @@ Thumbs.db
 .vscode/
 
 # Test / tooling artifacts
+*.py
+*.pyw
+*.pyc
+*.pyo
+__pycache__/
 coverage/
 .playwright-mcp/
 browser-shots/
