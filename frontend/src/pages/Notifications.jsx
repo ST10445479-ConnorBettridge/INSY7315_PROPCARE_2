@@ -1,13 +1,31 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Bell } from "lucide-react";
 import { api } from "../api.js";
 import { useData } from "../hooks.js";
 import { Loading, Heading, Empty } from "../components/shared.jsx";
-import { label, date } from "../format.js";
+import { date } from "../format.js";
+import "./Notifications.css";
 
 function Notifications({ notify }) {
   const [rev, setRev] = useState(0),
-    state = useData("/notifications", rev);
+    [unreadOnly, setUnreadOnly] = useState(false),
+    [busy, setBusy] = useState(null);
+  const filter = useRef();
+  const state = useData(`/notifications?unreadOnly=${unreadOnly}`, rev);
+  async function markRead(id) {
+    if (busy !== null) return;
+    setBusy(id ?? "all");
+    try {
+      await api(id == null ? "/notifications/read" : `/notifications/${id}/read`, "POST");
+      setRev(x => x + 1);
+      notify(id == null ? "All notifications marked as read." : "Notification marked as read.");
+      filter.current?.focus();
+    } catch (error) {
+      notify(error.message);
+    } finally {
+      setBusy(null);
+    }
+  }
   return (
     <>
       <Heading
@@ -16,30 +34,31 @@ function Notifications({ notify }) {
         action={
           <button
             className="btn secondary"
-            onClick={async () => {
-              try {
-                await api("/notifications/read", "POST");
-                setRev((x) => x + 1);
-                notify("All notifications marked as read.");
-              } catch (e) {
-                notify(e.message);
-              }
-            }}
+            disabled={busy !== null || state.loading || !state.data?.some(n => !n.read)}
+            onClick={() => markRead(null)}
           >
-            Mark all read
+            {busy === "all" ? "Marking notifications…" : "Mark all read"}
           </button>
         }
       >
         Updates from your property team.
       </Heading>
+      <div className="filters">
+        <label>
+          <input ref={filter} type="checkbox" checked={unreadOnly}
+            onChange={event => setUnreadOnly(event.target.checked)} />
+          {" "}Show unread only
+        </label>
+      </div>
       <Loading state={state}>
         {(rows) =>
           rows.length ? (
-            <div className="notification-list">
+            <div className="notification-list" aria-busy={busy !== null}>
               {rows.map((n) => (
                 <article
                   className={"panel notification " + (!n.read ? "unread" : "")}
                   key={n.id}
+                  data-notification-id={n.id}
                 >
                   <Bell size={20} />
                   <div>
@@ -51,18 +70,18 @@ function Notifications({ notify }) {
                     <small>{date(n.createdAt)}</small>
                   </div>
                   {!n.read && (
-                    <span
-                      className="unread-dot"
-                      role="img"
-                      aria-label="Unread"
-                    />
+                    <button className="btn secondary small"
+                      aria-label={`Mark notification as read: ${n.title}`}
+                      disabled={busy !== null} onClick={() => markRead(n.id)}>
+                      {busy === n.id ? "Marking…" : "Mark as read"}
+                    </button>
                   )}
                 </article>
               ))}
             </div>
           ) : (
-            <Empty title="You’re all caught up">
-              Updates will appear here when your requests change.
+            <Empty title={unreadOnly ? "No unread notifications" : "You’re all caught up"}>
+              {unreadOnly ? "Clear the filter to see updates you have already read." : "Updates will appear here when your requests change."}
             </Empty>
           )
         }
