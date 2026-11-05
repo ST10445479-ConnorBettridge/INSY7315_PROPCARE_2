@@ -224,6 +224,21 @@ test("email notifications survive SMTP failure and retry only to scoped recipien
   assert.match(delivered[0].recipient, /michael\.jacobs@obsrealty\.co\.za/i);
 });
 
+test("individual notification updates are private, idempotent and excluded from the unread filter", async () => {
+  const request = await newRequest("Notification controls " + suffix);
+  const unread = await ok("/notifications?unreadOnly=true", "GET", undefined, tokens.manager);
+  const notification = unread.find(n => n.requestId === request.id);
+  assert.ok(notification);
+  assert.ok(unread.every(n => !n.read));
+  assert.equal((await call(`/notifications/${notification.id}/read`, "POST", {}, tokens.tenant)).status, 404);
+  assert.equal((await call(`/notifications/${notification.id}/read`, "POST", {})).status, 401);
+  await ok(`/notifications/${notification.id}/read`, "POST", {}, tokens.manager);
+  await ok(`/notifications/${notification.id}/read`, "POST", {}, tokens.manager);
+  assert.ok(!(await ok("/notifications?unreadOnly=true", "GET", undefined, tokens.manager)).some(n => n.id === notification.id));
+  assert.equal((await ok("/notifications", "GET", undefined, tokens.manager)).find(n => n.id === notification.id).read, true);
+  assert.equal((await call("/notifications/2147483647/read", "POST", {}, tokens.manager)).status, 404);
+});
+
 test("tenant registration cannot choose an elevated role and needs a verified unit", async () => {
   const email = `registration-${suffix}@example.com`;
   await ok(
