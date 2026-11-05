@@ -37,6 +37,8 @@ Thumbs.db
 *.pyc
 *.pyo
 __pycache__/
+/output/pdf/
+/tmp/
 coverage/
 .playwright-mcp/
 browser-shots/
