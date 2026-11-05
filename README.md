@@ -12,7 +12,7 @@ A property maintenance system for Obs Realty Group, built with **React, ASP.NET 
 - [Test results](docs/AUDIT-2026-10-05.md)
 - [GitHub Actions](https://github.com/ST10445479-ConnorBettridge/INSY7315_PROPCARE_2/actions)
 
-The Task 3 improvements are on the [task3-improvements branch](https://github.com/ST10445479-ConnorBettridge/INSY7315_PROPCARE_2/tree/task3-improvements). See the [feedback response](docs/TASK3-CHANGES.md) for verification results and remaining submission requirements.
+The submission source is maintained on [main](https://github.com/ST10445479-ConnorBettridge/INSY7315_PROPCARE_2/tree/main). See the [feedback response](docs/TASK3-CHANGES.md) for verification results and remaining submission requirements.
 
 ## Demo access
 

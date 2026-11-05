@@ -53,7 +53,7 @@ GitHub needs the `APP_URL` variable, `RENDER_DEPLOY_HOOK_URL` and `HOSTED_DEMO_P
 
 The SMTP release `e186a48` was manually deployed on 5 November 2026. Verification covered the exact release ID, PostgreSQL connectivity, React assets, OpenAPI, all four roles, image processing and private photo access, the complete maintenance lifecycle, rating persistence, and actual inbox delivery. Temporary verification accounts were disabled and their property and tenancy archived afterward. Credentials, generated test output and temporary verification commands are excluded from source control.
 
-The `task3-improvements` branch also includes Help and individual notification controls. Its CI run must pass before deploying that exact commit; pushing the branch does not merge it into `main` or trigger the main-branch release workflow.
+Help and individual notification controls were verified in production at `a652ca0` after [CI passed](https://github.com/ST10445479-ConnorBettridge/INSY7315_PROPCARE_2/actions/runs/42088163045). The submission source is maintained on `main`. Its required checks must pass before the main-branch release workflow deploys that exact revision; `/api/health` reports the live revision.
 
 ## Hosting limits and EXPO billing
 
