@@ -6,10 +6,12 @@ PropCare helps tenants report maintenance issues, managers assign work, technici
 
 1. Open PropCare and enter the email and password assigned to you. Demonstration passwords are shared privately, not published in the guide.
 2. After signing in, use the sidebar to open the pages available to your role. On a narrow screen, open the navigation button in the top bar.
-3. Select the notification bell to read updates. Open your profile from the account area to update your name, email or password.
+3. Select the notification bell to read updates. Show unread only filters new updates; Mark as read changes one notification, while Mark all read changes your account's unread updates. Open your profile from the account area to update your name, email or password.
 4. Use Sign out when finished, especially on a shared computer. If sign-out fails, check the connection and try again.
 
 Keyboard users can Tab to Skip to main content, move through links and fields, and press Enter to activate controls. Escape closes a dialog and returns focus to its trigger.
+
+Open Help in the sidebar for the guide tailored to your current role, direct links to the relevant pages and expandable answers about photos, account access and request actions.
 
 ![Tenant overview showing the navigation, maintenance counts and recent requests](screenshots/tenant-overview.png)
 

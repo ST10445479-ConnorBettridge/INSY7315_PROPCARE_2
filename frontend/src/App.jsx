@@ -14,6 +14,8 @@ import { Reports } from "./pages/Reports.jsx";
 import { Schedule } from "./pages/Schedule.jsx";
 import { SettingsPage } from "./pages/SettingsPage.jsx";
 import { Profile } from "./pages/Profile.jsx";
+import { Help } from "./pages/Help.jsx";
+import { BookOpen } from "lucide-react";
 import { roles, label } from "./format.js";
 import "./App.css";
 
@@ -51,6 +53,7 @@ const navItems = [
     ["tenant", "manager", "technician", "admin"],
   ],
   ["settings", "Settings", Settings, ["admin"]],
+  ["help", "Help", BookOpen, ["tenant", "manager", "technician", "admin"]],
 ];
 
 function App() {
@@ -135,6 +138,7 @@ function App() {
   else if (page === "settings")
     content = <SettingsPage notify={setToast} onOrganisation={setOrgName} />;
   else if (page === "schedule") content = <Schedule />;
+  else if (page === "help") content = <Help user={user} />;
   else
     content = (
       <Directory key={page} page={page} user={user} notify={setToast} />
